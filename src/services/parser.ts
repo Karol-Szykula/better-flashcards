@@ -12,6 +12,11 @@ export class Parser {
   private settings: ISettings;
   private htmlConverter;
 
+  /**
+   * Creates a new Parser instance.
+   * @param regex The regex definitions used to recognize flashcards, built from the current settings.
+   * @param settings The plugin settings that control card generation behavior.
+   */
   constructor(regex: Regex, settings: ISettings) {
     this.regex = regex;
     this.settings = settings;
@@ -25,6 +30,18 @@ export class Parser {
     this.htmlConverter.setOption("simpleLineBreaks", true);
   }
 
+  /**
+   * Parses a note and generates all the flashcards found in it.
+   * Runs every card generator (multiline with tag, inline, spaced, cloze),
+   * discards cards fully inside code/math blocks, sorts by end offset
+   * and appends the default Anki tag if one is configured.
+   * @param file The full content of the note.
+   * @param deck The name of the target Anki deck.
+   * @param vault The name of the Obsidian vault, used to build obsidian:// links.
+   * @param note The path of the note, used as the Source field when sourceSupport is on.
+   * @param globalTags Tags added to every generated card.
+   * @returns The list of flashcards found in the note, sorted by end offset.
+   */
   public generateFlashcards(
     file: string,
     deck: string,
@@ -131,6 +148,11 @@ export class Parser {
     return context;
   }
 
+  /**
+   * Generates spaced repetition cards from lines like "Question #flashcards-spaced".
+   * The whole line before the tag becomes the card prompt.
+   * @returns The list of Spacedcards found in the file.
+   */
   private generateSpacedCards(
     file: string,
     headings: any,
@@ -195,6 +217,11 @@ export class Parser {
     return cards;
   }
 
+  /**
+   * Replaces math expressions ($$...$$ and $...$) with unique placeholders
+   * so they are not touched by cloze parsing, and gives back a function
+   * that restores the original expressions.
+   */
   private shieldMath(text: string): { shielded: string; restore: (s: string) => string } {
     const placeholders: string[] = [];
     const shielded = text.replace(/\$\$[\s\S]+?\$\$|\$[^$]+?\$/g, (m) => {
@@ -207,6 +234,13 @@ export class Parser {
     return { shielded, restore };
   }
 
+  /**
+   * Generates cloze deletion cards from ==highlights== and {curly} syntax,
+   * converting them to the Anki {{cN::...}} format. Math is shielded first
+   * so its braces are not mistaken for cloze markers. Lines without any
+   * cloze marker are skipped.
+   * @returns The list of Clozecards found in the file.
+   */
   private generateClozeCards(
     file: string,
     headings: any,
@@ -285,6 +319,12 @@ export class Parser {
     return cards;
   }
 
+  /**
+   * Generates inline cards from single lines like "Question :: Answer".
+   * Lines starting with "cards-deck" or "tags" are treated as directives
+   * and skipped. ":::" produces a reversed card.
+   * @returns The list of Inlinecards found in the file.
+   */
   private generateInlineCards(
     file: string,
     headings: any,
@@ -359,6 +399,14 @@ export class Parser {
     return cards;
   }
 
+  /**
+   * Generates multiline cards from blocks like:
+   *   Question
+   *   #flashcards[-reverse]
+   *   Answer (possibly multiple lines)
+   * Embedded notes (![[note]]) found in the answer are replaced with their content.
+   * @returns The list of Flashcards found in the file.
+   */
   private generateCardsWithTag(
     file: string,
     headings: any,
@@ -431,6 +479,12 @@ export class Parser {
     return cards;
   }
 
+  /**
+   * Checks whether any of the given strings contains an HTML code block.
+   * Used to route cards containing code to a separate deck.
+   * @param str The strings to check, usually already converted fields of a card.
+   * @returns True if at least one string matches the code block regex.
+   */
   public containsCode(str: string[]): boolean {
     for (const s of str) {
       if (s.match(this.regex.codeBlock)) {
@@ -440,6 +494,13 @@ export class Parser {
     return false;
   }
 
+  /**
+   * Finds block IDs (^13 digits) that have no content above them anymore,
+   * i.e. cards whose content was deleted from the note and that should be
+   * removed from Anki as well.
+   * @param file The full content of the note.
+   * @returns The list of orphan block IDs.
+   */
   public getCardsToDelete(file: string): number[] {
     // Find block IDs with no content above it
     return [...file.matchAll(this.regex.cardsToDelete)].map((match) => {
@@ -447,6 +508,12 @@ export class Parser {
     });
   }
 
+  /**
+   * Converts a single string into Anki HTML: substitutes image/audio/obsidian links,
+   * converts math to Anki delimiters and finally renders markdown to HTML.
+   * @param str The raw text of a card field.
+   * @param vaultName The name of the Obsidian vault, used for obsidian:// links.
+   */
   private parseLine(str: string, vaultName: string) {
     return this.htmlConverter.makeHtml(
       this.mathToAnki(
@@ -458,6 +525,11 @@ export class Parser {
     );
   }
 
+  /**
+   * Extracts image file names from wiki ![[image.png]] and
+   * markdown ![alt](image.png) style links.
+   * @returns The list of image file names referenced by the string.
+   */
   private getImageLinks(str: string) {
     const wikiMatches = str.matchAll(this.regex.wikiImageLinks);
     const markdownMatches = str.matchAll(this.regex.markdownImageLinks);
@@ -474,6 +546,10 @@ export class Parser {
     return links;
   }
 
+  /**
+   * Extracts audio file names from wiki ![[audio.mp3]] style links.
+   * @returns The list of audio file names referenced by the string.
+   */
   private getAudioLinks(str: string) {
     const wikiMatches = str.matchAll(this.regex.wikiAudioLinks);
     const links: string[] = [];
@@ -485,6 +561,11 @@ export class Parser {
     return links;
   }
 
+  /**
+   * Converts wiki [[note]] links into clickable obsidian:// URLs.
+   * @param str The text to process.
+   * @param vaultName The name of the Obsidian vault to link against.
+   */
   private substituteObsidianLinks(str: string, vaultName: string) {
     const linkRegex = /\[\[(.+?)(?:\|(.+?))?\]\]/gim;
     vaultName = encodeURIComponent(vaultName);
@@ -498,6 +579,9 @@ export class Parser {
     });
   }
 
+  /**
+   * Converts wiki ![[image]] and markdown ![](image) links into <img> tags.
+   */
   private substituteImageLinks(str: string): string {
     str = str.replace(this.regex.wikiImageLinks, "<img src='$1'>");
     str = str.replace(this.regex.markdownImageLinks, "<img src='$1'>");
@@ -505,10 +589,18 @@ export class Parser {
     return str;
   }
 
+  /**
+   * Converts wiki ![[audio]] links into Anki [sound:...] references.
+   */
   private substituteAudioLinks(str: string): string {
     return str.replace(this.regex.wikiAudioLinks, "[sound:$1]");
   }
 
+  /**
+   * Converts Obsidian math syntax ($$...$$ and $...$)
+   * into the Anki delimiters \\[...\\] and \\(...\\),
+   * escaping special characters inside the expression.
+   */
   private mathToAnki(str: string) {
     str = str.replace(this.regex.mathBlock, function (match, p1, p2) {
       return "\\\\[" + escapeMarkdown(p2) + " \\\\]";
@@ -521,6 +613,13 @@ export class Parser {
     return str;
   }
 
+  /**
+   * Parses the tag portion of a card match into a tag list:
+   * splits on "#", trims each tag and converts the Obsidian hierarchy
+   * separator "/" into the Anki separator "::". Global tags come first.
+   * @param str The matched tag string, e.g. " #tag1 #parent/tag2".
+   * @param globalTags Tags that are added to every card.
+   */
   private parseTags(str: string, globalTags: string[]): string[] {
     const tags: string[] = [...globalTags];
 
@@ -538,10 +637,22 @@ export class Parser {
     return tags;
   }
 
+  /**
+   * Finds all Anki block IDs (^13 digits) in the note.
+   * Used to detect inconsistencies between existing IDs and generated cards.
+   * @param file The full content of the note.
+   * @returns The list of raw regex matches for every block ID found.
+   */
   public getAnkiIDsBlocks(file: string): RegExpMatchArray[] {
     return Array.from(file.matchAll(/\^(\d{13})\s*/gm));
   }
 
+  /**
+   * Builds a map of embedded notes currently rendered in the Obsidian DOM:
+   * key is the embed source ("note name"), value is its content converted
+   * back to markdown. Requires the Obsidian global activeDocument,
+   * so it only works inside the app and not in tests without a mock.
+   */
   private getEmbedMap() {
 
     // key：link url 
@@ -565,6 +676,12 @@ export class Parser {
     return embedMap;
   }
 
+  /**
+   * Appends the content of every embedded note (![[note]]) found in the
+   * given text using the provided embed map (transclusion).
+   * @param embedMap Map of embed sources to their markdown content.
+   * @param embedContent The raw answer text possibly containing embeds.
+   */
   private getEmbedWrapContent(embedMap: Map<any, any>, embedContent: string): string {
     let result: RegExpExecArray | null;
     while ((result = this.regex.embedBlock.exec(embedContent)) !== null) {

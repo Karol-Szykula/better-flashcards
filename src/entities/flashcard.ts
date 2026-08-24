@@ -1,4 +1,9 @@
-import { codeDeckExtension, sourceDeckExtension } from "src/conf/constants";
+import {
+  basicModelName,
+  basicReversedModelName,
+  codeDeckExtension,
+  sourceDeckExtension,
+} from "src/conf/constants";
 import { Card } from "src/entities/card";
 
 export class Flashcard extends Card {
@@ -29,8 +34,8 @@ export class Flashcard extends Card {
       containsCode
     );
     this.modelName = this.reversed
-      ? `Obsidian-basic-reversed`
-      : `Obsidian-basic`;
+      ? basicReversedModelName
+      : basicModelName;
     if (fields["Source"]) {
       this.modelName += sourceDeckExtension;
     }

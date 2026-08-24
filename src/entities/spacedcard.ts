@@ -1,4 +1,8 @@
-import { codeDeckExtension, sourceDeckExtension } from "src/conf/constants";
+import {
+  codeDeckExtension,
+  sourceDeckExtension,
+  spacedModelName,
+} from "src/conf/constants";
 import { Card } from "src/entities/card";
 
 export class Spacedcard extends Card {
@@ -28,7 +32,7 @@ export class Spacedcard extends Card {
       mediaNames,
       containsCode
     );
-    this.modelName = `Obsidian-spaced`;
+    this.modelName = spacedModelName;
     if (fields["Source"]) {
       this.modelName += sourceDeckExtension;
     }
