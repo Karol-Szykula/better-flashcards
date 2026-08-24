@@ -24,10 +24,12 @@ const PRODUCTION_PLUGIN_CONFIG = {
   ]
 };
 
+const OUT_DIR = process.env.OUT_DIR || 'docs/test-vault/.obsidian/plugins/better-flashcards/';
+
 const DEV_PLUGIN_CONFIG = {
   input: 'main.ts',
   output: {
-    dir: 'docs/test-vault/.obsidian/plugins/better-flashcards/',
+    dir: OUT_DIR,
     sourcemap: 'inline',
     format: 'cjs',
     exports: 'default'
@@ -37,11 +39,13 @@ const DEV_PLUGIN_CONFIG = {
     typescriptPlugin,
     nodeResolve({browser: true}),
     commonjs(),
-    copy({
-      targets: [
-        { src: 'manifest.json', dest: 'docs/test-vault/.obsidian/plugins/better-flashcards/' },
-      ],
-    }),
+    ...(OUT_DIR === '.' ? [] : [
+      copy({
+        targets: [
+          { src: 'manifest.json', dest: OUT_DIR },
+        ],
+      }),
+    ]),
   ]
 };
 

@@ -5,6 +5,7 @@
   "main": "main.js",
   "scripts": {
     "dev": "rollup --config rollup.config.js -w --environment BUILD:dev",
+    "dev:root": "rollup --config rollup.config.js -w --environment BUILD:dev, OUT_DIR:.",
     "build": "esbuild main.ts --bundle --external:obsidian --format=cjs --platform=browser --target=es2018 --outfile=main.js --sourcemap=inline",
     "build:rollup": "rollup --config rollup.config.js --environment BUILD:production",
     "release": "npm run build && mkdir -p dist/better-flashcards && cp main.js manifest.json dist/better-flashcards/",

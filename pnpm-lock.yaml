@@ -1574,7 +1574,7 @@ packages:
     engines: {node: '>=8'}
 
   obsidian@https://github.com/obsidianmd/obsidian-api/tarball/master:
-    resolution: {tarball: https://github.com/obsidianmd/obsidian-api/tarball/master}
+    resolution: {integrity: sha512-x9RHgqLfKZobB6W9TNA4rcST/xWEGOD3wB4sTScwCKEJsIDx45tJwSeGyU/ov5NgKo7shMfjkyjs0WAyRfH5FQ==, tarball: https://github.com/obsidianmd/obsidian-api/tarball/master}
     version: 1.13.1
     peerDependencies:
       '@codemirror/state': 6.5.0
