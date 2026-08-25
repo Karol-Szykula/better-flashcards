@@ -12,15 +12,12 @@ const copyFile = (src, destDir) => ({
   },
 });
 
-const getTypescriptOutDir = (rollupOutputDir) =>
-  rollupOutputDir && rollupOutputDir !== '.'
-    ? rollupOutputDir
-    : 'node_modules/.cache/tsc';
+const TSC_OUT_DIR = 'node_modules/.cache/tsc';
 
 const getTypescriptPlugin = (outDir) => typescript({
   include: ['**/*.ts', '**/*.tsx', '*.ts', '*.tsx'],
   compilerOptions: {
-    outDir: getTypescriptOutDir(outDir),
+    outDir: outDir || TSC_OUT_DIR,
   },
 });
 
@@ -56,7 +53,7 @@ const DEV_PLUGIN_CONFIG = {
     getTypescriptPlugin(OUT_DIR),
     nodeResolve({browser: true}),
     commonjs(),
-    ...(OUT_DIR === '.' ? [] : [copyFile('manifest.json', OUT_DIR)]),
+    copyFile('manifest.json', OUT_DIR),
   ]
 };
 
