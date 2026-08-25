@@ -12,8 +12,16 @@ const copyFile = (src, destDir) => ({
   },
 });
 
-const typescriptPlugin = typescript({
+const getTypescriptOutDir = (rollupOutputDir) =>
+  rollupOutputDir && rollupOutputDir !== '.'
+    ? rollupOutputDir
+    : 'node_modules/.cache/tsc';
+
+const getTypescriptPlugin = (outDir) => typescript({
   include: ['**/*.ts', '**/*.tsx', '*.ts', '*.tsx'],
+  compilerOptions: {
+    outDir: getTypescriptOutDir(outDir),
+  },
 });
 
 const PRODUCTION_PLUGIN_CONFIG = {
@@ -27,7 +35,7 @@ const PRODUCTION_PLUGIN_CONFIG = {
   },
   external: ['obsidian'],
   plugins: [
-    typescriptPlugin,
+    getTypescriptPlugin(),
     nodeResolve({browser: true}),
     commonjs(),
   ]
@@ -45,7 +53,7 @@ const DEV_PLUGIN_CONFIG = {
   },
   external: ['obsidian'],
   plugins: [
-    typescriptPlugin,
+    getTypescriptPlugin(OUT_DIR),
     nodeResolve({browser: true}),
     commonjs(),
     ...(OUT_DIR === '.' ? [] : [copyFile('manifest.json', OUT_DIR)]),
