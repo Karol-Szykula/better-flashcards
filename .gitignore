@@ -8,6 +8,7 @@ package-lock.json
 
 # build
 main.js
+manifest.json
 *.js.map
 dist/
 data.json
@@ -39,3 +40,4 @@ move.sh
 .DS_Store
 
 .env
+coverage/
