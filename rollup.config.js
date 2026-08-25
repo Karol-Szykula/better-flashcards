@@ -1,7 +1,16 @@
+import fs from 'fs';
+import path from 'path';
 import typescript from '@rollup/plugin-typescript';
 import {nodeResolve} from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
-import copy from 'rollup-plugin-copy';
+
+const copyFile = (src, destDir) => ({
+  name: 'copy-file',
+  writeBundle() {
+    fs.mkdirSync(destDir, {recursive: true});
+    fs.copyFileSync(src, path.join(destDir, path.basename(src)));
+  },
+});
 
 const typescriptPlugin = typescript({
   include: ['**/*.ts', '**/*.tsx', '*.ts', '*.tsx'],
@@ -39,13 +48,7 @@ const DEV_PLUGIN_CONFIG = {
     typescriptPlugin,
     nodeResolve({browser: true}),
     commonjs(),
-    ...(OUT_DIR === '.' ? [] : [
-      copy({
-        targets: [
-          { src: 'manifest.json', dest: OUT_DIR },
-        ],
-      }),
-    ]),
+    ...(OUT_DIR === '.' ? [] : [copyFile('manifest.json', OUT_DIR)]),
   ]
 };
 

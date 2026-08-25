@@ -5,7 +5,7 @@
   "main": "main.js",
   "scripts": {
     "dev": "rollup --config rollup.config.js -w --environment BUILD:dev",
-    "dev:root": "rollup --config rollup.config.js -w --environment BUILD:dev, OUT_DIR:.",
+    "dev:root": "rollup --config rollup.config.js -w --environment BUILD:dev,OUT_DIR:.",
     "build": "esbuild main.ts --bundle --external:obsidian --format=cjs --platform=browser --target=es2018 --outfile=main.js --sourcemap=inline",
     "build:rollup": "rollup --config rollup.config.js --environment BUILD:production",
     "release": "npm run build && mkdir -p dist/better-flashcards && cp main.js manifest.json dist/better-flashcards/",
@@ -31,7 +31,6 @@
     "jest": "^29.2.2",
     "obsidian": "https://github.com/obsidianmd/obsidian-api/tarball/master",
     "rollup": "^2.52.2",
-    "rollup-plugin-copy": "^3.4.0",
     "ts-jest": "^29.0.3",
     "ts-node": "^10.9.1",
     "tslib": "^2.3.0",
