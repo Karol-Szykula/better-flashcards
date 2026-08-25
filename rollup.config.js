@@ -1,13 +1,13 @@
 import fs from 'fs';
 import path from 'path';
 import typescript from '@rollup/plugin-typescript';
-import {nodeResolve} from '@rollup/plugin-node-resolve';
+import { nodeResolve } from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 
 const copyFile = (src, destDir) => ({
   name: 'copy-file',
   writeBundle() {
-    fs.mkdirSync(destDir, {recursive: true});
+    fs.mkdirSync(destDir, { recursive: true });
     fs.copyFileSync(src, path.join(destDir, path.basename(src)));
   },
 });
@@ -33,7 +33,7 @@ const PRODUCTION_PLUGIN_CONFIG = {
   external: ['obsidian'],
   plugins: [
     getTypescriptPlugin(),
-    nodeResolve({browser: true}),
+    nodeResolve({ browser: true }),
     commonjs(),
   ]
 };
@@ -51,7 +51,7 @@ const DEV_PLUGIN_CONFIG = {
   external: ['obsidian'],
   plugins: [
     getTypescriptPlugin(OUT_DIR),
-    nodeResolve({browser: true}),
+    nodeResolve({ browser: true }),
     commonjs(),
     copyFile('manifest.json', OUT_DIR),
   ]
@@ -61,7 +61,7 @@ let configs = []
 
 if (process.env.BUILD === "dev") {
   configs.push(DEV_PLUGIN_CONFIG);
-} else if (process.env.BUILD === "production" ) {
+} else if (process.env.BUILD === "production") {
   configs.push(PRODUCTION_PLUGIN_CONFIG);
 } else {
   configs.push(DEV_PLUGIN_CONFIG);
