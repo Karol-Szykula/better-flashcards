@@ -6,6 +6,10 @@
     "module": "ESNext",
     "target": "es2018",
     "skipLibCheck": true,
+    "types": [
+      "jest",
+      "node"
+    ],
     "allowJs": true,
     "noImplicitAny": true,
     "moduleResolution": "node",
