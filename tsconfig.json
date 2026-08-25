@@ -1,20 +1,24 @@
 { 
   "compilerOptions": {
-    "baseUrl": ".",
     "inlineSourceMap": true,
     "inlineSources": true,
     "module": "ESNext",
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
     "target": "es2018",
     "skipLibCheck": true,
     "types": [
       "jest",
       "node"
     ],
+    "paths": {
+      "src/*": [
+        "./src/*"
+      ]
+    },
     "allowJs": true,
     "noImplicitAny": true,
-    "moduleResolution": "node",
     "importHelpers": true,
-    "downlevelIteration": true,
     "lib": [
       "dom",
       "es2018",
