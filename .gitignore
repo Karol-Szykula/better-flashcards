@@ -39,3 +39,4 @@ move.sh
 .DS_Store
 
 .env
+coverage/
