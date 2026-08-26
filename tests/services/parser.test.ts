@@ -127,7 +127,7 @@ describe("Parser - inline cards (Q :: A)", () => {
     const cards = generate(`# ${question} :: answer\n`);
 
     expect(cards).toHaveLength(1);
-    expect(cards[0].fields["Front"]).toContain(question);
+    expect(cards[0].fields["Front"]).toContain("<p>" + question + "</p>");
   });
 
   test("parses card defined as a list item", () => {
@@ -135,7 +135,7 @@ describe("Parser - inline cards (Q :: A)", () => {
     const cards = generate(`- ${question} :: list answer\n`);
 
     expect(cards).toHaveLength(1);
-    expect(cards[0].fields["Front"]).toContain(question);
+    expect(cards[0].fields["Front"]).toContain("<p>" + question + "</p>");
   });
 
   test("converts markdown to HTML in fields", () => {
@@ -143,7 +143,7 @@ describe("Parser - inline cards (Q :: A)", () => {
     const cards = generate(`This is **${boldText}** :: answer\n`);
 
     expect(cards[0].fields["Front"]).toContain(
-      `<strong>${boldText}</strong>`
+      `<p>This is <strong>${boldText}</strong></p>`
     );
   });
 
@@ -174,7 +174,7 @@ describe("Parser - spaced repetition cards", () => {
 
     expect(cards).toHaveLength(1);
     expect(cards[0]).toBeInstanceOf(Spacedcard);
-    expect(cards[0].fields["Prompt"]).toContain(prompt);
+    expect(cards[0].fields["Prompt"]).toContain("<p>" + prompt + "</p>");
     expect(cards[0].modelName).toBe(spacedModelName);
   });
 
@@ -198,7 +198,7 @@ describe("Parser - cloze cards", () => {
 
     expect(cards).toHaveLength(1);
     expect(cards[0]).toBeInstanceOf(Clozecard);
-    expect(cards[0].fields["Text"]).toContain(`{{c1::${word}}}`);
+    expect(cards[0].fields["Text"]).toContain(`<p>The {{c1::${word}}} is hot</p>`);
     expect(cards[0].initialContent).toBe(line);
   });
 
@@ -206,7 +206,7 @@ describe("Parser - cloze cards", () => {
     const word = "dog";
     const cards = generate(`A {${word}} barks\n`);
 
-    expect(cards[0].fields["Text"]).toContain(`{{c1::${word}}}`);
+    expect(cards[0].fields["Text"]).toContain(`<p>A {{c1::${word}}} barks</p>`);
   });
 
   test("respects explicit cloze numbering ({2:...})", () => {
@@ -283,7 +283,7 @@ describe("Parser - multiline cards with tag", () => {
     );
 
     expect(cards).toHaveLength(1);
-    expect(cards[0].fields["Back"]).toContain(embedMarker);
+    expect(cards[0].fields["Back"]).toContain(`<p>See !<a href=\"obsidian://open?vault=Vault&file=embedded-note.md\">${embedSrc}</a>${embedMarker}</p>`);
   });
 });
 
@@ -297,6 +297,7 @@ describe("Parser - context aware mode", () => {
     const cards = generate(file, { contextAwareMode: true });
     const front = cards[0].fields["Front"];
 
+    expect(front).toContain(">")
     expect(front).toContain(topic);
     expect(front).toContain(subtopic);
     expect(front).toContain(question);
