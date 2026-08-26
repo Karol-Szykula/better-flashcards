@@ -37,6 +37,10 @@ beforeEach(() => {
   setActiveDocument();
 });
 
+function htmlToPlainText(html: string): string {
+  return html.replace(/<[^>]+>/g, "");
+}
+
 describe("Parser - inline cards (Q :: A)", () => {
   test("parses basic inline card with fields, deck and offsets", () => {
     const question = "What is 2+2?";
@@ -295,20 +299,46 @@ describe("Parser - context aware mode", () => {
 
   test("prepends heading context to the prompt", () => {
     const cards = generate(file, { contextAwareMode: true });
-    const front = cards[0].fields["Front"];
+    const front = htmlToPlainText(cards[0].fields["Front"]);
 
-    expect(front).toContain(">")
+    expect(front).toContain("&gt;");
     expect(front).toContain(topic);
     expect(front).toContain(subtopic);
     expect(front).toContain(question);
+    expect(front.match(/&gt;/g)).toHaveLength(2);
   });
 
   test("omits context when contextAwareMode disabled", () => {
     const cards = generate(file);
-    const front = cards[0].fields["Front"];
+    const front = htmlToPlainText(cards[0].fields["Front"]);
 
+    expect(front).not.toContain("&gt;");
     expect(front).not.toContain(topic);
     expect(front).not.toContain(subtopic);
+  });
+
+  test("collects all heading levels from deeply nested notes", () => {
+    const deepTopics = [
+      "First",
+      "Second",
+      "Third",
+      "Fourth",
+      "Fifth",
+    ];
+    const deepFile =
+      deepTopics
+        .map((name, i) => `${"#".repeat(i + 1)} ${name}`)
+        .join("\n\n") + `\n\n${question} :: Answer\n`;
+
+    const cards = generate(deepFile, { contextAwareMode: true });
+    const front = htmlToPlainText(cards[0].fields["Front"]);
+
+    expect(cards).toHaveLength(1);
+    expect(front.match(/&gt;/g)).toHaveLength(deepTopics.length);
+    for (const name of deepTopics) {
+      expect(front).toContain(name);
+    }
+    expect(front).toContain(question);
   });
 });
 
