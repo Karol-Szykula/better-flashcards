@@ -33,15 +33,17 @@ beforeEach(() => {
 
 describe("Parser - inline cards (Q :: A)", () => {
   test("parses basic inline card with fields, deck and offsets", () => {
-    const cardLine = "What is 2+2? :: 4";
+    const question = "What is 2+2?";
+    const answer = "4";
+    const cardLine = `${question} :: ${answer}`;
     const file = `${cardLine}\n`;
     const cards = generate(file);
 
     expect(cards).toHaveLength(1);
     const card = cards[0];
     expect(card).toBeInstanceOf(Inlinecard);
-    expect(card.fields["Front"]).toContain("What is 2+2?");
-    expect(card.fields["Back"]).toContain("4");
+    expect(card.fields["Front"]).toContain(question);
+    expect(card.fields["Back"]).toContain(answer);
     expect(card.reversed).toBe(false);
     expect(card.deckName).toBe("Test deck");
     expect(card.initialOffset).toBe(0);
@@ -75,51 +77,68 @@ describe("Parser - inline cards (Q :: A)", () => {
   });
 
   test("merges global tags before card tags", () => {
-    const cards = generate("Q :: A #card-tag\n", {}, ["global1"]);
+    const globalTag = "global1";
+    const cardTag = "card-tag";
+    const cards = generate(
+      `Q :: A #${cardTag}\n`,
+      {},
+      [globalTag]
+    );
 
-    expect(cards[0].tags).toEqual(["global1", "card-tag"]);
+    expect(cards[0].tags).toEqual([globalTag, cardTag]);
   });
 
   test("reads inline block ID when inlineID enabled", () => {
-    const cards = generate("Q :: A ^1234567890123\n", { inlineID: true });
+    const blockId = 1234567890123;
+    const cards = generate(
+      `Q :: A ^${blockId}\n`,
+      { inlineID: true }
+    );
 
-    expect(cards[0].id).toBe(1234567890123);
+    expect(cards[0].id).toBe(blockId);
     expect(cards[0].inserted).toBe(true);
   });
 
   test("adds Source field when sourceSupport enabled", () => {
+    const vault = "Vault";
+    const note = "Note";
     const settings = createSettings({ sourceSupport: true });
     const parser = new Parser(new Regex(settings), settings);
     const cards = parser.generateFlashcards(
       "Q :: A\n",
       "Deck",
-      "Vault",
-      "Note"
+      vault,
+      note
     );
 
     expect(cards[0].fields["Source"]).toBe(
-      '<a href="obsidian://open?vault=Vault&file=Note.md">Note</a>'
+      `<a href="obsidian://open?vault=${vault}&file=${note}.md">${note}</a>`
     );
   });
 
   test("parses card defined in a heading line", () => {
-    const cards = generate("# Heading question :: answer\n");
+    const question = "Heading question";
+    const cards = generate(`# ${question} :: answer\n`);
 
     expect(cards).toHaveLength(1);
-    expect(cards[0].fields["Front"]).toContain("Heading question");
+    expect(cards[0].fields["Front"]).toContain(question);
   });
 
   test("parses card defined as a list item", () => {
-    const cards = generate("- List question :: list answer\n");
+    const question = "List question";
+    const cards = generate(`- ${question} :: list answer\n`);
 
     expect(cards).toHaveLength(1);
-    expect(cards[0].fields["Front"]).toContain("List question");
+    expect(cards[0].fields["Front"]).toContain(question);
   });
 
   test("converts markdown to HTML in fields", () => {
-    const cards = generate("This is **bold** :: answer\n");
+    const boldText = "bold";
+    const cards = generate(`This is **${boldText}** :: answer\n`);
 
-    expect(cards[0].fields["Front"]).toContain("<strong>bold</strong>");
+    expect(cards[0].fields["Front"]).toContain(
+      `<strong>${boldText}</strong>`
+    );
   });
 
   test("detects code in card content", () => {
@@ -130,23 +149,26 @@ describe("Parser - inline cards (Q :: A)", () => {
   });
 
   test("collects wiki image and audio links as medias", () => {
+    const image = "photo.png";
+    const audio = "voice.mp3";
     const cards = generate(
-      "Look ![[photo.png]] :: Listen ![[voice.mp3]]\n"
+      `Look ![[${image}]] :: Listen ![[${audio}]]\n`
     );
 
     expect(cards).toHaveLength(1);
-    expect(cards[0].mediaNames).toContain("photo.png");
-    expect(cards[0].mediaNames).toContain("voice.mp3");
+    expect(cards[0].mediaNames).toContain(image);
+    expect(cards[0].mediaNames).toContain(audio);
   });
 });
 
 describe("Parser - spaced repetition cards", () => {
   test("parses single-line spaced card", () => {
-    const cards = generate("What is Anki? #card-spaced\n");
+    const prompt = "What is Anki?";
+    const cards = generate(`${prompt} #card-spaced\n`);
 
     expect(cards).toHaveLength(1);
     expect(cards[0]).toBeInstanceOf(Spacedcard);
-    expect(cards[0].fields["Prompt"]).toContain("What is Anki?");
+    expect(cards[0].fields["Prompt"]).toContain(prompt);
     expect(cards[0].modelName).toBe("Obsidian-spaced");
   });
 
@@ -164,25 +186,32 @@ describe("Parser - spaced repetition cards", () => {
 
 describe("Parser - cloze cards", () => {
   test("converts ==highlight== to cloze deletion", () => {
-    const cards = generate("The ==Sun== is hot\n");
+    const word = "Sun";
+    const line = `The ==${word}== is hot`;
+    const cards = generate(`${line}\n`);
 
     expect(cards).toHaveLength(1);
     expect(cards[0]).toBeInstanceOf(Clozecard);
-    expect(cards[0].fields["Text"]).toContain("{{c1::Sun}}");
-    expect(cards[0].initialContent).toBe("The ==Sun== is hot");
+    expect(cards[0].fields["Text"]).toContain(`{{c1::${word}}}`);
+    expect(cards[0].initialContent).toBe(line);
   });
 
   test("converts {curly} syntax to cloze deletion", () => {
-    const cards = generate("A {dog} barks\n");
+    const word = "dog";
+    const cards = generate(`A {${word}} barks\n`);
 
-    expect(cards[0].fields["Text"]).toContain("{{c1::dog}}");
+    expect(cards[0].fields["Text"]).toContain(`{{c1::${word}}}`);
   });
 
   test("respects explicit cloze numbering ({2:...})", () => {
-    const cards = generate("A {2:dog} and a {1:cat}\n");
+    const secondWord = "dog";
+    const firstWord = "cat";
+    const cards = generate(
+      `A {2:${secondWord}} and a {1:${firstWord}}\n`
+    );
 
-    expect(cards[0].fields["Text"]).toContain("{{c2::dog}}");
-    expect(cards[0].fields["Text"]).toContain("{{c1::cat}}");
+    expect(cards[0].fields["Text"]).toContain(`{{c2::${secondWord}}}`);
+    expect(cards[0].fields["Text"]).toContain(`{{c1::${firstWord}}}`);
   });
 
   test("does not create cloze card without cloze markers", () => {
@@ -191,22 +220,26 @@ describe("Parser - cloze cards", () => {
   });
 
   test("shields math from cloze parsing", () => {
-    const cards = generate("$$E=mc^2$$ says ==energy==\n");
+    const math = "E=mc^2";
+    const word = "energy";
+    const cards = generate(`$${math}$ says ==${word}==\n`);
 
     expect(cards).toHaveLength(1);
-    expect(cards[0].fields["Text"]).toContain("{{c1::energy}}");
-    expect(cards[0].fields["Text"]).toContain("E=mc^2");
+    expect(cards[0].fields["Text"]).toContain(`{{c1::${word}}}`);
+    expect(cards[0].fields["Text"]).toContain(math);
   });
 });
 
 describe("Parser - multiline cards with tag", () => {
   test("parses multiline card under flashcards tag", () => {
-    const cards = generate("Two plus two\n#card\nFour\n");
+    const question = "Two plus two";
+    const answer = "Four";
+    const cards = generate(`${question}\n#card\n${answer}\n`);
 
     expect(cards).toHaveLength(1);
     expect(cards[0]).toBeInstanceOf(Flashcard);
-    expect(cards[0].fields["Front"]).toContain("Two plus two");
-    expect(cards[0].fields["Back"]).toContain("Four");
+    expect(cards[0].fields["Front"]).toContain(question);
+    expect(cards[0].fields["Back"]).toContain(answer);
     expect(cards[0].reversed).toBe(false);
     expect(cards[0].modelName).toBe("Obsidian-basic");
   });
@@ -220,10 +253,13 @@ describe("Parser - multiline cards with tag", () => {
   });
 
   test("inlines embedded note content into the answer", () => {
+    const embedMarker = "EMBEDCONTENTMARKER";
+    const embedSrc = "embedded-note";
+
     setActiveDocument([
       {
-        src: "embedded-note",
-        outerHTML: '<div class="internal-embed">EMBEDCONTENTMARKER</div>',
+        src: embedSrc,
+        outerHTML: `<div class="internal-embed">${embedMarker}</div>`,
       },
     ]);
 
@@ -231,38 +267,41 @@ describe("Parser - multiline cards with tag", () => {
     const parser = new Parser(new Regex(settings), settings);
     jest
       .spyOn((parser as any).htmlConverter, "makeMarkdown")
-      .mockReturnValue("EMBEDCONTENTMARKER");
+      .mockReturnValue(embedMarker);
 
     const cards = parser.generateFlashcards(
-      "Front side\n#card\nSee ![[embedded-note]]\n",
+      `Front side\n#card\nSee ![[${embedSrc}]]\n`,
       "Test deck",
       "Vault",
       "Note"
     );
 
     expect(cards).toHaveLength(1);
-    expect(cards[0].fields["Back"]).toContain("EMBEDCONTENTMARKER");
+    expect(cards[0].fields["Back"]).toContain(embedMarker);
   });
 });
 
 describe("Parser - context aware mode", () => {
-  const file = "# Topic\n\n## Subtopic\n\nWhat :: Answer\n";
+  const topic = "Topic";
+  const subtopic = "Subtopic";
+  const question = "What";
+  const file = `# ${topic}\n\n## ${subtopic}\n\n${question} :: Answer\n`;
 
   test("prepends heading context to the prompt", () => {
     const cards = generate(file, { contextAwareMode: true });
     const front = cards[0].fields["Front"];
 
-    expect(front).toContain("Topic");
-    expect(front).toContain("Subtopic");
-    expect(front).toContain("What");
+    expect(front).toContain(topic);
+    expect(front).toContain(subtopic);
+    expect(front).toContain(question);
   });
 
   test("omits context when contextAwareMode disabled", () => {
     const cards = generate(file);
     const front = cards[0].fields["Front"];
 
-    expect(front).not.toContain("Topic");
-    expect(front).not.toContain("Subtopic");
+    expect(front).not.toContain(topic);
+    expect(front).not.toContain(subtopic);
   });
 });
 
@@ -283,9 +322,10 @@ describe("Parser - filtering and ordering", () => {
   });
 
   test("appends default Anki tag to all cards", () => {
-    const cards = generate("Q :: A\n", { defaultAnkiTag: "imported" });
+    const defaultTag = "imported";
+    const cards = generate("Q :: A\n", { defaultAnkiTag: defaultTag });
 
-    expect(cards[0].tags).toContain("imported");
+    expect(cards[0].tags).toContain(defaultTag);
   });
 });
 
@@ -299,22 +339,22 @@ describe("Parser - public helper methods", () => {
 
   test("getCardsToDelete returns orphan block IDs", () => {
     const parser = createParser();
+    const blockId = 1234567890123;
 
-    expect(parser.getCardsToDelete("text\n\n^1234567890123\n")).toEqual([
-      1234567890123,
+    expect(parser.getCardsToDelete(`text\n\n^${blockId}\n`)).toEqual([
+      blockId,
     ]);
   });
 
   test("getAnkiIDsBlocks finds all block IDs", () => {
     const parser = createParser();
+    const firstId = "1111111111111";
+    const secondId = "2222222222222";
     const blocks = parser.getAnkiIDsBlocks(
-      "a ^1111111111111 b ^2222222222222\n"
+      `a ^${firstId} b ^${secondId}\n`
     );
 
     expect(blocks).toHaveLength(2);
-    expect(blocks.map((b) => b[1])).toEqual([
-      "1111111111111",
-      "2222222222222",
-    ]);
+    expect(blocks.map((b) => b[1])).toEqual([firstId, secondId]);
   });
 });
