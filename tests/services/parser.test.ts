@@ -7,6 +7,12 @@ import { Flashcard } from "src/entities/flashcard";
 import { Inlinecard } from "src/entities/inlinecard";
 import { Spacedcard } from "src/entities/spacedcard";
 import { Clozecard } from "src/entities/clozecard";
+import {
+  basicModelName,
+  basicReversedModelName,
+  clozeModelName,
+  spacedModelName,
+} from "src/conf/constants";
 
 function createParser(overrides: Partial<ISettings> = {}): Parser {
   const settings = createSettings(overrides);
@@ -57,7 +63,7 @@ describe("Parser - inline cards (Q :: A)", () => {
 
     expect(cards).toHaveLength(1);
     expect(cards[0].reversed).toBe(true);
-    expect(cards[0].modelName).toBe("Obsidian-basic-reversed");
+    expect(cards[0].modelName).toBe(basicReversedModelName);
   });
 
   test("skips lines starting with cards-deck", () => {
@@ -169,7 +175,7 @@ describe("Parser - spaced repetition cards", () => {
     expect(cards).toHaveLength(1);
     expect(cards[0]).toBeInstanceOf(Spacedcard);
     expect(cards[0].fields["Prompt"]).toContain(prompt);
-    expect(cards[0].modelName).toBe("Obsidian-spaced");
+    expect(cards[0].modelName).toBe(spacedModelName);
   });
 
   test("collects additional tags on spaced card", () => {
@@ -241,7 +247,7 @@ describe("Parser - multiline cards with tag", () => {
     expect(cards[0].fields["Front"]).toContain(question);
     expect(cards[0].fields["Back"]).toContain(answer);
     expect(cards[0].reversed).toBe(false);
-    expect(cards[0].modelName).toBe("Obsidian-basic");
+    expect(cards[0].modelName).toBe(basicModelName);
   });
 
   test("parses reversed multiline card", () => {
@@ -249,7 +255,7 @@ describe("Parser - multiline cards with tag", () => {
 
     expect(cards).toHaveLength(1);
     expect(cards[0].reversed).toBe(true);
-    expect(cards[0].modelName).toBe("Obsidian-basic-reversed");
+    expect(cards[0].modelName).toBe(basicReversedModelName);
   });
 
   test("inlines embedded note content into the answer", () => {

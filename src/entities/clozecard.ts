@@ -1,4 +1,8 @@
-import { codeDeckExtension, sourceDeckExtension } from "src/conf/constants";
+import {
+  clozeModelName,
+  codeDeckExtension,
+  sourceDeckExtension,
+} from "src/conf/constants";
 import { Card } from "src/entities/card";
 
 export class Clozecard extends Card {
@@ -28,7 +32,7 @@ export class Clozecard extends Card {
       mediaNames,
       containsCode
     );
-    this.modelName = `Obsidian-cloze`;
+    this.modelName = clozeModelName;
     if (fields["Source"]) {
       this.modelName += sourceDeckExtension;
     }
