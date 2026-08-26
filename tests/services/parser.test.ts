@@ -31,7 +31,7 @@ beforeEach(() => {
   setActiveDocument();
 });
 
-describe("Parser – inline cards (Q :: A)", () => {
+describe("Parser - inline cards (Q :: A)", () => {
   test("parses basic inline card with fields, deck and offsets", () => {
     const file = "What is 2+2? :: 4\n";
     const cards = generate(file);
