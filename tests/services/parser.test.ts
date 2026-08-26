@@ -33,7 +33,8 @@ beforeEach(() => {
 
 describe("Parser - inline cards (Q :: A)", () => {
   test("parses basic inline card with fields, deck and offsets", () => {
-    const file = "What is 2+2? :: 4\n";
+    const cardLine = "What is 2+2? :: 4";
+    const file = `${cardLine}\n`;
     const cards = generate(file);
 
     expect(cards).toHaveLength(1);
@@ -44,8 +45,7 @@ describe("Parser - inline cards (Q :: A)", () => {
     expect(card.reversed).toBe(false);
     expect(card.deckName).toBe("Test deck");
     expect(card.initialOffset).toBe(0);
-    expect(card.endOffset).toBeGreaterThan(0);
-    expect(card.endOffset).toBeLessThanOrEqual(file.length);
+    expect(card.endOffset).toBe(cardLine.length);
     expect(card.inserted).toBe(false);
     expect(card.id).toBe(-1);
   });
@@ -140,7 +140,7 @@ describe("Parser - inline cards (Q :: A)", () => {
   });
 });
 
-describe("Parser – spaced repetition cards", () => {
+describe("Parser - spaced repetition cards", () => {
   test("parses single-line spaced card", () => {
     const cards = generate("What is Anki? #card-spaced\n");
 
@@ -162,7 +162,7 @@ describe("Parser – spaced repetition cards", () => {
   });
 });
 
-describe("Parser – cloze cards", () => {
+describe("Parser - cloze cards", () => {
   test("converts ==highlight== to cloze deletion", () => {
     const cards = generate("The ==Sun== is hot\n");
 
@@ -199,7 +199,7 @@ describe("Parser – cloze cards", () => {
   });
 });
 
-describe("Parser – multiline cards with tag", () => {
+describe("Parser - multiline cards with tag", () => {
   test("parses multiline card under flashcards tag", () => {
     const cards = generate("Two plus two\n#card\nFour\n");
 
@@ -245,7 +245,7 @@ describe("Parser – multiline cards with tag", () => {
   });
 });
 
-describe("Parser – context aware mode", () => {
+describe("Parser - context aware mode", () => {
   const file = "# Topic\n\n## Subtopic\n\nWhat :: Answer\n";
 
   test("prepends heading context to the prompt", () => {
@@ -266,7 +266,7 @@ describe("Parser – context aware mode", () => {
   });
 });
 
-describe("Parser – filtering and ordering", () => {
+describe("Parser - filtering and ordering", () => {
   test.each([
     ["code block", "```\nHidden :: Card\n```\n"],
     ["math block", "$$\nx :: y\n$$\n"],
@@ -289,7 +289,7 @@ describe("Parser – filtering and ordering", () => {
   });
 });
 
-describe("Parser – public helper methods", () => {
+describe("Parser - public helper methods", () => {
   test("containsCode detects <code> blocks", () => {
     const parser = createParser();
 
