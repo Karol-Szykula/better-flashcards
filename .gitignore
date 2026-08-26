@@ -21,6 +21,9 @@ docs/test-vault/.obsidian/workspace-mobile.json
 docs/test-vault/.obsidian/plugins/*/data.json
 docs/test-vault/.obsidian/plugins/*/.hotreload
 
+# tests
+coverage/
+
 # scripts
 move.sh
 
@@ -38,5 +41,6 @@ move.sh
 # Github
 .DS_Store
 
+# misc
 .env
-coverage/
+docs/test-vault/.obsidian/themes/
