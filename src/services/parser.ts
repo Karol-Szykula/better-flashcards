@@ -10,7 +10,7 @@ import { escapeMarkdown } from "src/utils";
 export class Parser {
   private regex: Regex;
   private settings: ISettings;
-  private htmlConverter;
+  private htmlConverter: showdown.Converter;
 
   /**
    * Creates a new Parser instance.
@@ -51,7 +51,7 @@ export class Parser {
   ): Flashcard[] {
     const contextAware = this.settings.contextAwareMode;
     let cards: Flashcard[] = [];
-    let headings: any = [];
+    let headings: RegExpMatchArray[] = [];
 
     if (contextAware) {
       // https://regex101.com/r/agSp9X/4
@@ -107,7 +107,7 @@ export class Parser {
    * @param headingLevel The level of the first ancestor heading, i.e. the number of #.
    */
   private getContext(
-    headings: any,
+    headings: RegExpMatchArray[],
     index: number,
     headingLevel: number
   ): string[] {
@@ -155,7 +155,7 @@ export class Parser {
    */
   private generateSpacedCards(
     file: string,
-    headings: any,
+    headings: RegExpMatchArray[],
     deck: string,
     vault: string,
     note: string,
@@ -192,7 +192,7 @@ export class Parser {
       const tags: string[] = this.parseTags(match[4], globalTags);
       const id: number = match[5] ? Number(match[5]) : -1;
       const inserted: boolean = match[5] ? true : false;
-      const fields: any = { Prompt: prompt };
+      const fields: Record<string, string> = { Prompt: prompt };
       if (this.settings.sourceSupport) {
         fields["Source"] = note;
       }
@@ -243,7 +243,7 @@ export class Parser {
    */
   private generateClozeCards(
     file: string,
-    headings: any,
+    headings: RegExpMatchArray[],
     deck: string,
     vault: string,
     note: string,
@@ -294,7 +294,7 @@ export class Parser {
       const tags: string[] = this.parseTags(match[4], globalTags);
       const id: number = match[5] ? Number(match[5]) : -1;
       const inserted: boolean = match[5] ? true : false;
-      const fields: any = { Text: clozeText, Extra: "" };
+      const fields: Record<string, string> = { Text: clozeText, Extra: "" };
       if (this.settings.sourceSupport) {
         fields["Source"] = note;
       }
@@ -327,7 +327,7 @@ export class Parser {
    */
   private generateInlineCards(
     file: string,
-    headings: any,
+    headings: RegExpMatchArray[],
     deck: string,
     vault: string,
     note: string,
@@ -374,7 +374,7 @@ export class Parser {
       const tags: string[] = this.parseTags(match[5], globalTags);
       const id: number = match[6] ? Number(match[6]) : -1;
       const inserted: boolean = match[6] ? true : false;
-      const fields: any = { Front: question, Back: answer };
+      const fields: Record<string, string> = { Front: question, Back: answer };
       if (this.settings.sourceSupport) {
         fields["Source"] = note;
       }
@@ -409,7 +409,7 @@ export class Parser {
    */
   private generateCardsWithTag(
     file: string,
-    headings: any,
+    headings: RegExpMatchArray[],
     deck: string,
     vault: string,
     note: string,
@@ -454,7 +454,7 @@ export class Parser {
       const tags: string[] = this.parseTags(match[4], globalTags);
       const id: number = match[6] ? Number(match[6]) : -1;
       const inserted: boolean = match[6] ? true : false;
-      const fields: any = { Front: question, Back: answer };
+      const fields: Record<string, string> = { Front: question, Back: answer };
       if (this.settings.sourceSupport) {
         fields["Source"] = note;
       }
@@ -657,7 +657,7 @@ export class Parser {
 
     // key：link url 
     // value： embed content parse from html document
-    const embedMap = new Map()
+    const embedMap = new Map<string, string>()
 
     const embedList = Array.from(activeDocument.documentElement.getElementsByClassName('internal-embed'));
 
@@ -667,7 +667,9 @@ export class Parser {
       const embedValue = this.htmlConverter.makeMarkdown(this.htmlConverter.makeHtml(el.outerHTML).toString());
 
       const embedKey = el.getAttribute("src");
-      embedMap.set(embedKey, embedValue);
+      if (embedKey) {
+        embedMap.set(embedKey, embedValue);
+      }
 
       // console.log("embedKey: \n" + embedKey);
       // console.log("embedValue: \n" + embedValue);
@@ -682,12 +684,12 @@ export class Parser {
    * @param embedMap Map of embed sources to their markdown content.
    * @param embedContent The raw answer text possibly containing embeds.
    */
-  private getEmbedWrapContent(embedMap: Map<any, any>, embedContent: string): string {
+  private getEmbedWrapContent(embedMap: Map<string, string>, embedContent: string): string {
     let result: RegExpExecArray | null;
     while ((result = this.regex.embedBlock.exec(embedContent)) !== null) {
       // console.log("result[0]: " + result[0]);
       // console.log("embedMap.get(result[1]): " + embedMap.get(result[1]));
-      embedContent = embedContent.concat(embedMap.get(result[1]));
+      embedContent = embedContent.concat(embedMap.get(result[1]) ?? "");
     }
     return embedContent;
   }
