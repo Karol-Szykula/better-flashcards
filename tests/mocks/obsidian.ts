@@ -17,5 +17,7 @@ export function createActiveDocumentMock(embeds: EmbedElementMock[] = []) {
 }
 
 export function setActiveDocument(embeds: EmbedElementMock[] = []) {
-  (globalThis as any).activeDocument = createActiveDocumentMock(embeds);
+  Object.assign(globalThis, {
+    activeDocument: createActiveDocumentMock(embeds),
+  });
 }
