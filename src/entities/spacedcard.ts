@@ -3,7 +3,7 @@ import {
   sourceDeckExtension,
   spacedModelName,
 } from "src/conf/constants";
-import { Card } from "src/entities/card";
+import { AnkiCardPayload, Card } from "src/entities/card";
 
 export class Spacedcard extends Card {
   constructor(
@@ -41,8 +41,8 @@ export class Spacedcard extends Card {
     }
   }
 
-  public getCard(update = false): object {
-    const card: any = {
+  public getCard(update = false): AnkiCardPayload {
+    const card: AnkiCardPayload = {
       deckName: this.deckName,
       modelName: this.modelName,
       fields: this.fields,

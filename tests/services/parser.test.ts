@@ -10,7 +10,6 @@ import { Clozecard } from "src/entities/clozecard";
 import {
   basicModelName,
   basicReversedModelName,
-  clozeModelName,
   spacedModelName,
 } from "src/conf/constants";
 
@@ -276,7 +275,11 @@ describe("Parser - multiline cards with tag", () => {
     const settings = createSettings();
     const parser = new Parser(new Regex(settings), settings);
     jest
-      .spyOn((parser as any).htmlConverter, "makeMarkdown")
+      .spyOn(
+        (parser as unknown as { htmlConverter: { makeMarkdown: (html: string) => string } })
+          .htmlConverter,
+        "makeMarkdown"
+      )
       .mockReturnValue(embedMarker);
 
     const cards = parser.generateFlashcards(
@@ -287,7 +290,7 @@ describe("Parser - multiline cards with tag", () => {
     );
 
     expect(cards).toHaveLength(1);
-    expect(cards[0].fields["Back"]).toContain(`<p>See !<a href=\"obsidian://open?vault=Vault&file=embedded-note.md\">${embedSrc}</a>${embedMarker}</p>`);
+    expect(cards[0].fields["Back"]).toContain(`<p>See !<a href="obsidian://open?vault=Vault&file=embedded-note.md">${embedSrc}</a>${embedMarker}</p>`);
   });
 });
 
