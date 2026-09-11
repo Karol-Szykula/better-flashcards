@@ -7,6 +7,10 @@ import {
   highlightCssBase64,
   codeDeckExtension,
   sourceDeckExtension,
+  basicModelName,
+  basicReversedModelName,
+  clozeModelName,
+  spacedModelName,
 } from "src/conf/constants";
 
 export class Anki {
@@ -302,7 +306,7 @@ export class Anki {
     const obsidianBasic = {
       action: "createModel",
       params: {
-        modelName: `Obsidian-basic${sourceExtension}${codeExtension}`,
+        modelName: `${basicModelName}${sourceExtension}${codeExtension}`,
         inOrderFields: classicFields,
         css: css,
         cardTemplates: [
@@ -318,7 +322,7 @@ export class Anki {
     const obsidianBasicReversed = {
       action: "createModel",
       params: {
-        modelName: `Obsidian-basic-reversed${sourceExtension}${codeExtension}`,
+        modelName: `${basicReversedModelName}${sourceExtension}${codeExtension}`,
         inOrderFields: classicFields,
         css: css,
         cardTemplates: [
@@ -339,7 +343,7 @@ export class Anki {
     const obsidianCloze = {
       action: "createModel",
       params: {
-        modelName: `Obsidian-cloze${sourceExtension}${codeExtension}`,
+        modelName: `${clozeModelName}${sourceExtension}${codeExtension}`,
         inOrderFields: clozeFields,
         css: css,
         isCloze: true,
@@ -357,7 +361,7 @@ export class Anki {
     const obsidianSpaced = {
       action: "createModel",
       params: {
-        modelName: `Obsidian-spaced${sourceExtension}${codeExtension}`,
+        modelName: `${spacedModelName}${sourceExtension}${codeExtension}`,
         inOrderFields: promptFields,
         css: css,
         cardTemplates: [
