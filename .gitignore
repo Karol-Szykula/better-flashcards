@@ -44,3 +44,4 @@ move.sh
 # misc
 .env
 docs/test-vault/.obsidian/themes/
+.todo
