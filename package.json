@@ -8,7 +8,9 @@
     "build": "esbuild main.ts --bundle --external:obsidian --format=cjs --platform=browser --target=es2018 --outfile=main.js --sourcemap=inline",
     "build:rollup": "rollup --config rollup.config.js --environment BUILD:production",
     "release": "npm run build && mkdir -p dist/better-flashcards && cp main.js manifest.json dist/better-flashcards/",
-    "test": "jest"
+    "test": "jest",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "keywords": [
     "obsidian",
@@ -18,15 +20,17 @@
   "author": "Mihir Patel, Karol Szykuła",
   "license": "MIT",
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@rollup/plugin-commonjs": "^29.0.3",
     "@rollup/plugin-node-resolve": "^16.0.3",
     "@rollup/plugin-typescript": "^12.3.0",
     "@types/jest": "30.0.0",
     "@types/node": "26.2.0",
-    "@typescript-eslint/eslint-plugin": "^5.7.0",
-    "@typescript-eslint/parser": "^5.7.0",
+    "@typescript-eslint/eslint-plugin": "^8.69.0",
+    "@typescript-eslint/parser": "^8.69.0",
     "esbuild": "^0.28.1",
     "eslint": "10.9.0",
+    "globals": "^16.5.0",
     "jest": "30.4.2",
     "obsidian": "https://github.com/obsidianmd/obsidian-api/tarball/master",
     "rollup": "^4.62.4",
