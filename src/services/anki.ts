@@ -42,7 +42,7 @@ export class Anki {
       }
     }
 
-    if (actions) {
+    if (actions.length) {
       return this.invoke("multi", 6, { actions: actions });
     } else {
       return {};
@@ -184,6 +184,14 @@ export class Anki {
 
   public async changeDeck(ids: number[], deckName: string) {
     return await this.invoke("changeDeck", 6, { cards: ids, deck: deckName });
+  }
+
+  public async getDeckNames(): Promise<string[]> {
+    return await this.invoke("deckNames", 6);
+  }
+
+  public async findNotes(query: string): Promise<number[]> {
+    return await this.invoke("findNotes", 6, { query });
   }
 
   public async cardsInfo(ids: number[]) {
