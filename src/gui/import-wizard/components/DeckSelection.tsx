@@ -1,0 +1,193 @@
+import { useEffect, useState, type JSX } from "react";
+import type { Anki } from "src/services/anki";
+import type { VaultNoteIndex } from "src/services/vault";
+import {
+  commonWizardClasses,
+  deckSelectionClasses,
+  mergeClasses,
+} from "src/gui/import-wizard/classes";
+import { List } from "src/gui/import-wizard/list/List";
+import { LabeledControl, ListRow } from "src/gui/import-wizard/list/ListRow";
+
+export interface DeckSelectionProps {
+  anki: Anki;
+  className?: string;
+  onSelectDeckName: (deckName: string) => void;
+  selectedDeckName: string;
+  vaultNoteIndex: VaultNoteIndex;
+}
+
+interface DeckWithNotes {
+  deckName: string;
+  noteIds: number[];
+}
+
+function deckSearchQuery(deckName: string): string {
+  return `deck:"${deckName.replace(/"/g, "")}"`;
+}
+
+function countImportedNotes(
+  noteIds: number[],
+  vaultNoteIndex: VaultNoteIndex
+): number {
+  return noteIds.filter((id) => vaultNoteIndex.has(id)).length;
+}
+
+function isDeckFullyImported(
+  noteIds: number[],
+  importedCount: number
+): boolean {
+  return noteIds.length > 0 && importedCount === noteIds.length;
+}
+
+function isDeckEmpty(noteIds: number[]): boolean {
+  return noteIds.length === 0;
+}
+
+function deckRowTooltip(
+  isFullyImported: boolean,
+  isEmptyDeck: boolean
+): string | undefined {
+  if (isFullyImported) {
+    return "Already in Obsidian";
+  }
+  if (isEmptyDeck) {
+    return "Empty deck";
+  }
+  return undefined;
+}
+
+function splitDeckHierarchy(deckName: string): {
+  depth: number;
+  shortName: string;
+} {
+  const hierarchy = deckName.split("::");
+  return {
+    depth: hierarchy.length - 1,
+    shortName: hierarchy[hierarchy.length - 1],
+  };
+}
+
+async function fetchDecksWithNotes(anki: Anki): Promise<DeckWithNotes[]> {
+  const deckNames = await anki.getDeckNames();
+  return Promise.all(
+    deckNames.map(async (deckName) => ({
+      deckName,
+      noteIds: await anki.findNotes(deckSearchQuery(deckName)),
+    }))
+  );
+}
+
+export function DeckSelection({
+  anki,
+  vaultNoteIndex,
+  selectedDeckName,
+  onSelectDeckName,
+  className,
+}: DeckSelectionProps): JSX.Element {
+  const [decks, setDecks] = useState<DeckWithNotes[] | null>(null);
+  const [loadError, setLoadError] = useState("");
+
+  const loadDeckList = () => {
+    let isCancelled = false;
+    void (async () => {
+      try {
+        const decksWithNotes = await fetchDecksWithNotes(anki);
+        if (!isCancelled) {
+          setDecks(decksWithNotes);
+        }
+      } catch {
+        if (!isCancelled) {
+          setLoadError(
+            "Error: Anki must be open with AnkiConnect installed."
+          );
+        }
+      }
+    })();
+    return () => {
+      isCancelled = true;
+    };
+  };
+
+  useEffect(loadDeckList, [anki]);
+
+  const rootClassName = mergeClasses(commonWizardClasses.pageView, className);
+  const listColumns = ["Deck", "Imported"];
+
+  if (loadError) {
+    return (
+      <div className={rootClassName}>
+        <p>{loadError}</p>
+      </div>
+    );
+  }
+  if (decks === null) {
+    return (
+      <div className={rootClassName}>
+        <p>Connecting to Anki…</p>
+      </div>
+    );
+  }
+  if (!decks.length) {
+    return (
+      <div className={rootClassName}>
+        <p>No decks found in Anki.</p>
+      </div>
+    );
+  }
+  return (
+    <div className={rootClassName}>
+      <p>Select a deck to import:</p>
+      <List columns={listColumns} columnWidths="1fr auto" dividers="bottom">
+        {decks.map(({ deckName, noteIds }) => {
+          const importedCount = countImportedNotes(noteIds, vaultNoteIndex);
+          const isFullyImported = isDeckFullyImported(noteIds, importedCount);
+          const isEmptyDeck = isDeckEmpty(noteIds);
+          const isDisabled = isFullyImported || isEmptyDeck;
+          const { depth, shortName } = splitDeckHierarchy(deckName);
+          const tooltip = deckRowTooltip(isFullyImported, isEmptyDeck);
+          const deckRowCells = [
+            <LabeledControl
+              control={
+                <input
+                  checked={deckName === selectedDeckName}
+                  disabled={isDisabled}
+                  name="flashcards-import-wizard-modal-deck"
+                  onChange={() => onSelectDeckName(deckName)}
+                  title={tooltip}
+                  type="radio"
+                  value={deckName}
+                />
+              }
+              key="select"
+              label={
+                <span className={deckSelectionClasses.deckLabelText}>
+                  {shortName}
+                </span>
+              }
+              tooltip={tooltip}
+            />,
+            <span key="count">
+              {importedCount}/{noteIds.length}
+            </span>,
+          ];
+          return (
+            <ListRow
+              cells={deckRowCells}
+              className={mergeClasses(
+                deckSelectionClasses.deckRow,
+                isDisabled ? deckSelectionClasses.deckRowDisabled : undefined
+              )}
+              disabled={isDisabled}
+              key={deckName}
+              onSelect={() => onSelectDeckName(deckName)}
+              style={{
+                paddingLeft: `calc(${depth} * var(--flashcards-import-wizard-modal__row-indent) + 0.25rem)`,
+              }}
+            />
+          );
+        })}
+      </List>
+    </div>
+  );
+}

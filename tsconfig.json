@@ -4,6 +4,7 @@
     "inlineSources": true,
     "module": "ESNext",
     "moduleResolution": "bundler",
+    "jsx": "react-jsx",
     "esModuleInterop": true,
     "target": "es2018",
     "skipLibCheck": true,
@@ -31,6 +32,6 @@
     ],
   },
   "include": [
-    "**/*.ts", "jest.config.js",
+    "**/*.ts", "**/*.tsx", "jest.config.js",
   ]
 }

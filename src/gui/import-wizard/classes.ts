@@ -1,0 +1,50 @@
+export function mergeClasses(
+  ...classes: Array<string | undefined>
+): string {
+  return classes.filter(Boolean).join(" ");
+}
+
+export const commonWizardClasses = {
+  pageView: "flashcards-import-wizard-modal__page-view",
+} as const;
+
+export const importWizardClasses = {
+  modal: "flashcards-import-wizard-modal",
+} as const;
+
+export const pageIndicatorClasses = {
+  pageIndicator: "flashcards-import-wizard-modal__page-indicator",
+  page: "flashcards-import-wizard-modal__page",
+  pageNumber: "flashcards-import-wizard-modal__page-number",
+  pageActive: "flashcards-import-wizard-modal__page--active",
+  pageDone: "flashcards-import-wizard-modal__page--done",
+  pageSeparator: "flashcards-import-wizard-modal__page-separator",
+} as const;
+
+export const footerClasses = {
+  footer: "flashcards-import-wizard-modal__footer",
+  footerRight: "flashcards-import-wizard-modal__footer-right",
+} as const;
+
+export const deckSelectionClasses = {
+  deckRow: "flashcards-import-wizard-modal__deck-row",
+  deckRowDisabled: "flashcards-import-wizard-modal__deck-row--disabled",
+  deckLabelText: "flashcards-import-wizard-modal__deck-label-text",
+} as const;
+
+export const fieldMappingClasses = {
+  modelSection: "flashcards-import-wizard-modal__model-section",
+  modelRecognized: "flashcards-import-wizard-modal__model-badge--recognized",
+  fieldRow: "flashcards-import-wizard-modal__field-row",
+  fieldSample: "flashcards-import-wizard-modal__field-sample",
+} as const;
+
+export const cardsPreviewClasses = {
+  previewRow: "flashcards-import-wizard-modal__preview-row",
+  previewBadge: "flashcards-import-wizard-modal__preview-badge",
+  previewBadgeNew: "flashcards-import-wizard-modal__preview-badge--new",
+  previewBadgeConflict:
+    "flashcards-import-wizard-modal__preview-badge--conflict",
+  previewDetails: "flashcards-import-wizard-modal__preview-details",
+  previewPagination: "flashcards-import-wizard-modal__preview-pagination",
+} as const;

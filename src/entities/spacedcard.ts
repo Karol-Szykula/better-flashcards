@@ -2,6 +2,7 @@ import {
   codeDeckExtension,
   sourceDeckExtension,
   spacedModelName,
+  ankiFieldNames,
 } from "src/conf/constants";
 import { AnkiCardPayload, Card } from "src/entities/card";
 
@@ -33,7 +34,7 @@ export class Spacedcard extends Card {
       containsCode
     );
     this.modelName = spacedModelName;
-    if (fields["Source"]) {
+    if (fields[ankiFieldNames.source]) {
       this.modelName += sourceDeckExtension;
     }
     if (containsCode) {

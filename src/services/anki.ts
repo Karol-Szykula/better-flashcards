@@ -1,5 +1,6 @@
 import { AnkiCardPayload, AnkiNoteInfo, Card } from "src/entities/card";
 import {
+  ankiFieldNames,
   sourceField,
   codeScript,
   highlightjsBase64,
@@ -52,6 +53,12 @@ export class Anki {
     } else {
       return {};
     }
+  }
+
+  public async retrieveMediaFile(filename: string): Promise<string | null> {
+    return await this.invoke<string | null>("retrieveMediaFile", 6, {
+      filename,
+    });
   }
 
   public async storeCodeHighlightMedias() {
@@ -129,8 +136,8 @@ export class Anki {
                     | AnkiCardPayload[]
                     | undefined;
                   const noteName =
-                    notes?.[i]?.fields?.["Front"] ||
-                    notes?.[i]?.fields?.["Text"] ||
+                    notes?.[i]?.fields?.[ankiFieldNames.front] ||
+                    notes?.[i]?.fields?.[ankiFieldNames.text] ||
                     "unknown";
                   console.warn(
                     `Flashcards: addNote failed for "${noteName}": ${String(e)}`
@@ -330,13 +337,13 @@ export class Anki {
     const clozeFront = `{{cloze:Text}}\n\n<script>\r\n    var tagEl = document.querySelector('.tags');\r\n    var tags = tagEl.innerHTML.split(' ');\r\n    var html = '';\r\n    tags.forEach(function(tag) {\r\n\tif (tag) {\r\n\t    var newTag = '<span class="tag">' + tag + '</span>';\r\n           html += newTag;\r\n    \t    tagEl.innerHTML = html;\r\n\t}\r\n    });\r\n    \r\n</script>${codeScriptContent}`;
     const clozeBack = `{{cloze:Text}}\n\n<br>{{Extra}}${sourceFieldContent}<script>\r\n    var tagEl = document.querySelector('.tags');\r\n    var tags = tagEl.innerHTML.split(' ');\r\n    var html = '';\r\n    tags.forEach(function(tag) {\r\n\tif (tag) {\r\n\t    var newTag = '<span class="tag">' + tag + '</span>';\r\n           html += newTag;\r\n    \t    tagEl.innerHTML = html;\r\n\t}\r\n    });\r\n    \r\n</script>${codeScriptContent}`;
 
-    let classicFields = ["Front", "Back"];
-    let promptFields = ["Prompt"];
-    let clozeFields = ["Text", "Extra"];
+    let classicFields: string[] = [ankiFieldNames.front, ankiFieldNames.back];
+    let promptFields: string[] = [ankiFieldNames.prompt];
+    let clozeFields: string[] = [ankiFieldNames.text, ankiFieldNames.extra];
     if (sourceSupport) {
-      classicFields = classicFields.concat("Source");
-      promptFields = promptFields.concat("Source");
-      clozeFields = clozeFields.concat("Source");
+      classicFields = classicFields.concat(ankiFieldNames.source);
+      promptFields = promptFields.concat(ankiFieldNames.source);
+      clozeFields = clozeFields.concat(ankiFieldNames.source);
     }
 
     const obsidianBasic = {

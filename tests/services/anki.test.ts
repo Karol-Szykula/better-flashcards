@@ -248,6 +248,19 @@ describe("Anki - models", () => {
 });
 
 describe("Anki - media", () => {
+  test("retrieveMediaFile sends the filename", async () => {
+    const mediaContent = "ZGF0YQ==";
+    const mediaFilename = "image.png";
+    AnkiConnectMock.respondWith(mediaContent);
+    await expect(
+      new Anki().retrieveMediaFile(mediaFilename)
+    ).resolves.toEqual(mediaContent);
+    expect(AnkiConnectMock.requests[0]).toMatchObject({
+      action: "retrieveMediaFile",
+      params: { filename: mediaFilename },
+    });
+  });
+
   test("storeMediaFiles skips the request when there is no media", async () => {
     await expect(new Anki().storeMediaFiles([createCard()])).resolves.toEqual(
       {},

@@ -11,6 +11,8 @@ export type AnkiCardPayload = {
 
 export type AnkiNoteInfo = {
   noteId: number;
+  modelName?: string;
+  mod?: number;
   fields: Record<string, { value: string }>;
   tags: string[];
   cards?: number[];

@@ -1,6 +1,7 @@
 import { addIcon, Notice, Plugin, TFile } from "obsidian";
 import { ISettings } from "src/conf/settings";
 import { SettingsTab } from "src/gui/settings-tab";
+import { ImportModal } from "src/gui/import-modal";
 import { CardsService } from "src/services/cards";
 import { Anki } from "src/services/anki";
 import { noticeTimeout, flashcardsIcon } from "src/conf/constants";
@@ -14,7 +15,10 @@ export default class ObsidianFlashcard extends Plugin {
 
     // TODO test when file did not insert flashcards, but one of them is in Anki already
     const anki = new Anki();
-    this.settings = (await this.loadData()) || this.getDefaultSettings();
+    this.settings = Object.assign(
+      this.getDefaultSettings(),
+      (await this.loadData()) || {}
+    );
     this.cardsService = new CardsService(this.app, this.settings);
 
     const statusBar = this.addStatusBarItem();
@@ -39,6 +43,16 @@ export default class ObsidianFlashcard extends Plugin {
       name: "Generate for all files in vault",
       callback: () => {
         void this.generateCardsForVault();
+      },
+    });
+
+    this.addCommand({
+      id: "import-deck-from-anki",
+      name: "Import deck from Anki",
+      callback: () => {
+        new ImportModal(this.app, this.settings, () =>
+          this.saveData(this.settings)
+        ).setTitle("Import deck from Anki").open();
       },
     });
 
@@ -84,6 +98,8 @@ export default class ObsidianFlashcard extends Plugin {
       defaultAnkiTag: "obsidian",
       ankiConnectPermission: false,
       ignoredDirectories: "",
+      lastSyncRev: 0,
+      fieldMappings: {},
     };
   }
 

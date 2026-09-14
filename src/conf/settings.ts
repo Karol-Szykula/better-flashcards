@@ -1,15 +1,17 @@
 export interface ISettings {
-  contextAwareMode: boolean;
-  sourceSupport: boolean;
+  ankiConnectPermission: boolean;
   codeHighlightSupport: boolean;
-  inlineID: boolean;
+  contextAwareMode: boolean;
   contextSeparator: string;
   deck: string;
-  folderBasedDeck: boolean;
+  defaultAnkiTag: string;
+  fieldMappings: Record<string, Record<string, string>>;
   flashcardsTag: string;
+  folderBasedDeck: boolean;
+  ignoredDirectories: string;
+  inlineID: boolean;
   inlineSeparator: string;
   inlineSeparatorReverse: string;
-  defaultAnkiTag: string;
-  ankiConnectPermission: boolean;
-  ignoredDirectories: string;
+  lastSyncRev: number;
+  sourceSupport: boolean;
 }

@@ -7,7 +7,7 @@
     "dev": "rollup --config rollup.config.js -w --environment BUILD:dev",
     "build": "esbuild main.ts --bundle --external:obsidian --format=cjs --platform=browser --target=es2018 --outfile=main.js --sourcemap=inline",
     "build:rollup": "rollup --config rollup.config.js --environment BUILD:production",
-    "release": "npm run build && mkdir -p dist/better-flashcards && cp main.js manifest.json dist/better-flashcards/",
+    "release": "npm run build && mkdir -p dist/better-flashcards && cp main.js manifest.json styles.css dist/better-flashcards/",
     "test": "jest",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
@@ -26,10 +26,13 @@
     "@rollup/plugin-typescript": "12.3.0",
     "@types/jest": "30.0.0",
     "@types/node": "26.2.0",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.7",
     "@typescript-eslint/eslint-plugin": "8.69.0",
     "@typescript-eslint/parser": "8.69.0",
     "esbuild": "0.28.1",
     "eslint": "10.9.0",
+    "eslint-plugin-perfectionist": "^5.11.0",
     "globals": "16.5.0",
     "jest": "30.4.2",
     "jest-environment-jsdom": "^30.5.1",
@@ -43,6 +46,8 @@
   },
   "dependencies": {
     "@types/showdown": "1.9.3",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
     "showdown": "1.9.1"
   }
 }

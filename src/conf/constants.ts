@@ -1,4 +1,12 @@
 export const noticeTimeout = 15 * 1000;
+export const ankiFieldNames = {
+  front: "Front",
+  back: "Back",
+  text: "Text",
+  extra: "Extra",
+  prompt: "Prompt",
+  source: "Source",
+} as const;
 export const sourceDeckExtension = "-source";
 export const codeDeckExtension = "-code";
 export const modelNameBase = "Obsidian";
