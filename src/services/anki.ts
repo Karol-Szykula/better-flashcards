@@ -1,4 +1,4 @@
-import { Card } from "src/entities/card";
+import { AnkiCardPayload, AnkiNoteInfo, Card } from "src/entities/card";
 import {
   sourceField,
   codeScript,
@@ -13,6 +13,11 @@ import {
   spacedModelName,
 } from "src/conf/constants";
 
+export type AnkiActionRequest = {
+  action: string;
+  params: unknown;
+};
+
 export class Anki {
   public async createModels(
     sourceSupport: boolean,
@@ -23,15 +28,15 @@ export class Anki {
       models = models.concat(this.getModels(sourceSupport, true));
     }
 
-    return this.invoke("multi", 6, { actions: models });
+    return this.invoke<unknown>("multi", 6, { actions: models });
   }
 
-  public async createDeck(deckName: string): Promise<any> {
-    return this.invoke("createDeck", 6, { deck: deckName });
+  public async createDeck(deckName: string): Promise<number> {
+    return this.invoke<number>("createDeck", 6, { deck: deckName });
   }
 
   public async storeMediaFiles(cards: Card[]) {
-    const actions: any[] = [];
+    const actions: AnkiActionRequest[] = [];
 
     for (const card of cards) {
       for (const media of card.getMedias()) {
@@ -43,14 +48,14 @@ export class Anki {
     }
 
     if (actions.length) {
-      return this.invoke("multi", 6, { actions: actions });
+      return this.invoke<unknown>("multi", 6, { actions: actions });
     } else {
       return {};
     }
   }
 
   public async storeCodeHighlightMedias() {
-    const fileExists = await this.invoke("retrieveMediaFile", 6, {
+    const fileExists = await this.invoke<unknown>("retrieveMediaFile", 6, {
       filename: "_highlightInit.js",
     });
 
@@ -76,14 +81,14 @@ export class Anki {
           data: highlightCssBase64,
         },
       };
-      return this.invoke("multi", 6, {
+      return this.invoke<unknown>("multi", 6, {
         actions: [highlightjs, highlightjsInit, highlightjcss],
       });
     }
   }
 
   public async addCards(cards: Card[]): Promise<number[]> {
-    const notes: any = [];
+    const notes: AnkiCardPayload[] = [];
     cards.forEach((card) => notes.push(card.getCard(false)));
 
     try {
@@ -104,7 +109,11 @@ export class Anki {
     }
   }
 
-  private invokeAllowPartial(action: string, version = 6, params = {}): Promise<any> {
+  private invokeAllowPartial(
+    action: string,
+    version = 6,
+    params: Record<string, unknown> = {}
+  ): Promise<number[]> {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.addEventListener("error", () => reject(new Error("failed to issue request")));
@@ -114,10 +123,18 @@ export class Anki {
           console.log("Flashcards: addNotes response:", JSON.stringify({ error: response.error, result: response.result }));
           if (response.error) {
             if (Array.isArray(response.error)) {
-              response.error.forEach((e: any, i: number) => {
+              response.error.forEach((e: unknown, i: number) => {
                 if (e !== null) {
-                  const noteName = (params as any).notes?.[i]?.fields?.Front || (params as any).notes?.[i]?.fields?.Text || "unknown";
-                  console.warn(`Flashcards: addNote failed for "${noteName}": ${e}`);
+                  const notes = params["notes"] as
+                    | AnkiCardPayload[]
+                    | undefined;
+                  const noteName =
+                    notes?.[i]?.fields?.["Front"] ||
+                    notes?.[i]?.fields?.["Text"] ||
+                    "unknown";
+                  console.warn(
+                    `Flashcards: addNote failed for "${noteName}": ${String(e)}`
+                  );
                 }
               });
             } else {
@@ -147,8 +164,8 @@ export class Anki {
    * @param cards the new cards.
    * @param deckName the new deck name.
    */
-  public async updateCards(cards: Card[]): Promise<any> {
-    let updateActions: any[] = [];
+  public async updateCards(cards: Card[]): Promise<unknown> {
+    let updateActions: AnkiActionRequest[] = [];
 
     // Unfortunately https://github.com/FooSoft/anki-connect/issues/183
     // This means that the delta from the current tags on Anki and the generated one should be added/removed
@@ -179,35 +196,42 @@ export class Anki {
       },
     });
 
-    return this.invoke("multi", 6, { actions: updateActions });
+    return this.invoke<unknown>("multi", 6, { actions: updateActions });
   }
 
   public async changeDeck(ids: number[], deckName: string) {
-    return await this.invoke("changeDeck", 6, { cards: ids, deck: deckName });
+    return await this.invoke<unknown>("changeDeck", 6, {
+      cards: ids,
+      deck: deckName,
+    });
   }
 
   public async getDeckNames(): Promise<string[]> {
-    return await this.invoke("deckNames", 6);
+    return await this.invoke<string[]>("deckNames", 6);
   }
 
   public async findNotes(query: string): Promise<number[]> {
-    return await this.invoke("findNotes", 6, { query });
+    return await this.invoke<number[]>("findNotes", 6, { query });
   }
 
-  public async cardsInfo(ids: number[]) {
-    return await this.invoke("cardsInfo", 6, { cards: ids });
+  public async cardsInfo(
+    ids: number[]
+  ): Promise<Array<{ deckName: string }>> {
+    return await this.invoke<Array<{ deckName: string }>>("cardsInfo", 6, {
+      cards: ids,
+    });
   }
 
-  public async getCards(ids: number[]) {
-    return await this.invoke("notesInfo", 6, { notes: ids });
+  public async getCards(ids: number[]): Promise<AnkiNoteInfo[]> {
+    return await this.invoke<AnkiNoteInfo[]>("notesInfo", 6, { notes: ids });
   }
 
   public async deleteCards(ids: number[]) {
-    return this.invoke("deleteNotes", 6, { notes: ids });
+    return this.invoke<unknown>("deleteNotes", 6, { notes: ids });
   }
 
   public async ping(): Promise<boolean> {
-    return (await this.invoke("version", 6)) === 6;
+    return (await this.invoke<number>("version", 6)) === 6;
   }
 
   private mergeTags(oldTags: string[], newTags: string[], cardId: number) {
@@ -243,7 +267,11 @@ export class Anki {
     return actions;
   }
 
-  private invoke(action: string, version = 6, params = {}): any {
+  private invoke<T>(
+    action: string,
+    version = 6,
+    params: Record<string, unknown> = {}
+  ): Promise<T> {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.addEventListener("error", () => reject(new Error("failed to issue request")));
@@ -386,6 +414,6 @@ export class Anki {
   }
 
   public async requestPermission() {
-    return this.invoke("requestPermission", 6);
+    return this.invoke<{ permission: string }>("requestPermission", 6);
   }
 }

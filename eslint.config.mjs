@@ -4,7 +4,7 @@ import globals from "globals";
 
 export default [
   {
-    ignores: ["node_modules/", "coverage/", "dist/", "main.js"],
+    ignores: ["node_modules/", "coverage/", "dist/", "main.js", "docs/**"],
   },
   js.configs.recommended,
   ...tsPlugin.configs["flat/recommended"],
