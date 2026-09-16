@@ -1,8 +1,8 @@
 import type { App, TFile } from "obsidian";
 
 export interface AppMockOptions {
-  fileContent?: string;
   fileCache?: Record<string, unknown>;
+  fileContent?: string;
   vaultName?: string;
 }
 

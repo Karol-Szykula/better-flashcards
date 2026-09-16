@@ -55,6 +55,10 @@ const DEV_PLUGIN_CONFIG = {
       'manifest.json',
       'docs/test-vault/.obsidian/plugins/better-flashcards/',
     ),
+    copyFile(
+      'styles.css',
+      'docs/test-vault/.obsidian/plugins/better-flashcards/',
+    ),
   ]
 };
 

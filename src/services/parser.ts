@@ -1,6 +1,7 @@
 import { ISettings } from "src/conf/settings";
 import * as showdown from "showdown";
 import { Regex } from "src/conf/regex";
+import { ankiFieldNames } from "src/conf/constants";
 import { Flashcard } from "../entities/flashcard";
 import { Inlinecard } from "src/entities/inlinecard";
 import { Spacedcard } from "src/entities/spacedcard";
@@ -194,7 +195,7 @@ export class Parser {
       const inserted: boolean = match[5] ? true : false;
       const fields: Record<string, string> = { Prompt: prompt };
       if (this.settings.sourceSupport) {
-        fields["Source"] = note;
+        fields[ankiFieldNames.source] = note;
       }
       const containsCode = this.containsCode([prompt]);
 
@@ -296,7 +297,7 @@ export class Parser {
       const inserted: boolean = match[5] ? true : false;
       const fields: Record<string, string> = { Text: clozeText, Extra: "" };
       if (this.settings.sourceSupport) {
-        fields["Source"] = note;
+        fields[ankiFieldNames.source] = note;
       }
       const containsCode = this.containsCode([clozeText]);
 
@@ -376,7 +377,7 @@ export class Parser {
       const inserted: boolean = match[6] ? true : false;
       const fields: Record<string, string> = { Front: question, Back: answer };
       if (this.settings.sourceSupport) {
-        fields["Source"] = note;
+        fields[ankiFieldNames.source] = note;
       }
       const containsCode = this.containsCode([question, answer]);
 
@@ -456,7 +457,7 @@ export class Parser {
       const inserted: boolean = match[6] ? true : false;
       const fields: Record<string, string> = { Front: question, Back: answer };
       if (this.settings.sourceSupport) {
-        fields["Source"] = note;
+        fields[ankiFieldNames.source] = note;
       }
       const containsCode = this.containsCode([question, answer]);
 

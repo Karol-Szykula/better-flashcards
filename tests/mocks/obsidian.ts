@@ -1,6 +1,6 @@
 export interface EmbedElementMock {
-  src: string;
   outerHTML: string;
+  src: string;
 }
 
 export function createActiveDocumentMock(embeds: EmbedElementMock[] = []) {

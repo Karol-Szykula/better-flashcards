@@ -3,6 +3,7 @@ import {
   basicReversedModelName,
   codeDeckExtension,
   sourceDeckExtension,
+  ankiFieldNames,
 } from "src/conf/constants";
 import { AnkiCardPayload, Card } from "src/entities/card";
 
@@ -36,7 +37,7 @@ export class Flashcard extends Card {
     this.modelName = this.reversed
       ? basicReversedModelName
       : basicModelName;
-    if (fields["Source"]) {
+    if (fields[ankiFieldNames.source]) {
       this.modelName += sourceDeckExtension;
     }
     if (containsCode) {

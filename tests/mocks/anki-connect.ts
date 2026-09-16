@@ -9,8 +9,8 @@
 
 export interface AnkiConnectRequest {
   action: string;
-  version: number;
   params: Record<string, unknown>;
+  version: number;
 }
 
 export type AnkiResponder = (

@@ -15,6 +15,8 @@ export function createSettings(overrides: Partial<ISettings> = {}): ISettings {
     defaultAnkiTag: "",
     ankiConnectPermission: false,
     ignoredDirectories: "",
+    lastSyncRev: 0,
+    fieldMappings: {},
     ...overrides,
   };
 }

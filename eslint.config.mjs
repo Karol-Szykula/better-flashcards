@@ -1,5 +1,6 @@
 import js from "@eslint/js";
 import tsPlugin from "@typescript-eslint/eslint-plugin";
+import perfectionist from "eslint-plugin-perfectionist";
 import globals from "globals";
 
 export default [
@@ -8,6 +9,15 @@ export default [
   },
   js.configs.recommended,
   ...tsPlugin.configs["flat/recommended"],
+  {
+    plugins: {
+      perfectionist,
+    },
+    rules: {
+      "perfectionist/sort-interfaces": "error",
+      "perfectionist/sort-jsx-props": "error",
+    },
+  },
   {
     languageOptions: {
       ecmaVersion: 2022,
