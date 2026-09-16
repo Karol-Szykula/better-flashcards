@@ -151,6 +151,7 @@ export function DeckSelection({
               control={
                 <input
                   checked={deckName === selectedDeckName}
+                  className={deckSelectionClasses.deckRadio}
                   disabled={isDisabled}
                   name="flashcards-import-wizard-modal-deck"
                   onChange={() => onSelectDeckName(deckName)}
@@ -159,6 +160,7 @@ export function DeckSelection({
                   value={deckName}
                 />
               }
+              disabled={isDisabled}
               key="select"
               label={
                 <span className={deckSelectionClasses.deckLabelText}>

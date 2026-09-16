@@ -27,9 +27,10 @@ export const footerClasses = {
 } as const;
 
 export const deckSelectionClasses = {
+  deckLabelText: "flashcards-import-wizard-modal__deck-label-text",
+  deckRadio: "flashcards-import-wizard-modal__deck-radio",
   deckRow: "flashcards-import-wizard-modal__deck-row",
   deckRowDisabled: "flashcards-import-wizard-modal__deck-row--disabled",
-  deckLabelText: "flashcards-import-wizard-modal__deck-label-text",
 } as const;
 
 export const fieldMappingClasses = {

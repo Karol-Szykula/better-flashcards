@@ -20,9 +20,15 @@ function respondWithDecks(noteIds: number[] = [11, 22]) {
   AnkiConnectMock.setResponder((request) => {
     switch (request.action) {
       case "deckNames":
-        return { result: ["Languages", "Medicine"], error: null };
-      case "findNotes":
+        return { result: ["Languages", "Medicine", "Empty"], error: null };
+      case "findNotes": {
+        const params = request.params as Record<string, unknown>;
+        const query = params["query"] as string;
+        if (query.includes("Empty")) {
+          return { result: [], error: null };
+        }
         return { result: noteIds, error: null };
+      }
       default:
         return { result: null, error: null };
     }
@@ -85,5 +91,37 @@ describe("DeckSelection", () => {
     expect(
       await screen.findByText(/Anki must be open/)
     ).toBeInTheDocument();
+  });
+
+  test("marks the radio as clickable", async () => {
+    respondWithDecks();
+    renderDeckSelection();
+
+    const radio = await screen.findByRole("radio", { name: /Languages/ });
+    expect(radio).toHaveClass("flashcards-import-wizard-modal__deck-radio");
+  });
+
+  test("greys out empty decks without a clickable label", async () => {
+    respondWithDecks();
+    renderDeckSelection();
+
+    const radio = await screen.findByRole("radio", { name: /Empty/ });
+    expect(radio).toBeDisabled();
+    expect(
+      radio.closest("div.flashcards-import-wizard-modal__list-row")
+    ).toHaveClass("flashcards-import-wizard-modal__deck-row--disabled");
+    expect(radio.closest("label")).toHaveClass(
+      "flashcards-import-wizard-modal__labeled-control--disabled"
+    );
+  });
+
+  test("keeps the label clickable for selectable decks", async () => {
+    respondWithDecks();
+    renderDeckSelection();
+
+    const radio = await screen.findByRole("radio", { name: /Languages/ });
+    expect(radio.closest("label")).not.toHaveClass(
+      "flashcards-import-wizard-modal__labeled-control--disabled"
+    );
   });
 });

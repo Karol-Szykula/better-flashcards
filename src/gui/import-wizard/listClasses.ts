@@ -7,4 +7,6 @@ export const listClasses = {
   listDividersBottom: "flashcards-import-wizard-modal__list--dividers-bottom",
   listStriped: "flashcards-import-wizard-modal__list--striped",
   labeledControl: "flashcards-import-wizard-modal__labeled-control",
+  labeledControlDisabled:
+    "flashcards-import-wizard-modal__labeled-control--disabled",
 } as const;

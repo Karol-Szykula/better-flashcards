@@ -47,19 +47,25 @@ export function ListRow({
 export interface LabeledControlProps {
   className?: string;
   control: ReactNode;
+  disabled?: boolean;
   label: ReactNode;
   tooltip?: string;
 }
 
 export function LabeledControl({
   control,
+  disabled = false,
   label,
   tooltip,
   className,
 }: LabeledControlProps): JSX.Element {
   return (
     <label
-      className={mergeClasses(listClasses.labeledControl, className)}
+      className={mergeClasses(
+        listClasses.labeledControl,
+        disabled ? listClasses.labeledControlDisabled : undefined,
+        className
+      )}
       title={tooltip}
     >
       {control}
