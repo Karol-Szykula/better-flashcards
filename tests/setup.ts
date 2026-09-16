@@ -5,6 +5,8 @@
  * which would drown real test failures in noise. console.error stays loud
  * on purpose - it usually signals genuine trouble worth seeing.
  */
+import "@testing-library/jest-dom";
+
 beforeEach(() => {
 // jest.spyOn(console, "warn").mockImplementation(() => undefined);
 //  jest.spyOn(console, "log").mockImplementation(() => undefined);

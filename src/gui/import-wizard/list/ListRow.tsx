@@ -1,4 +1,9 @@
-import type { CSSProperties, JSX, ReactNode } from "react";
+import type {
+  CSSProperties,
+  JSX,
+  MouseEvent,
+  ReactNode,
+} from "react";
 import { listClasses } from "src/gui/import-wizard/listClasses";
 import { mergeClasses } from "src/gui/import-wizard/classes";
 
@@ -20,8 +25,11 @@ export function ListRow({
   return (
     <div
       className={mergeClasses(listClasses.listRow, className)}
-      onClick={() => {
-        if (!disabled && onSelect) {
+      onClick={(event: MouseEvent<HTMLDivElement>) => {
+        const interactive = (event.target as HTMLElement).closest(
+          "input, select, button, a"
+        );
+        if (!disabled && onSelect && !interactive) {
           onSelect();
         }
       }}
