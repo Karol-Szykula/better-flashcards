@@ -101,7 +101,7 @@ describe("DeckSelection", () => {
     expect(radio).toHaveClass("flashcards-import-wizard-modal__deck-radio");
   });
 
-  test("greys out empty decks without a clickable label", async () => {
+  test("greys out empty decks without a label element", async () => {
     respondWithDecks();
     renderDeckSelection();
 
@@ -110,9 +110,10 @@ describe("DeckSelection", () => {
     expect(
       radio.closest("div.flashcards-import-wizard-modal__list-row")
     ).toHaveClass("flashcards-import-wizard-modal__deck-row--disabled");
-    expect(radio.closest("label")).toHaveClass(
-      "flashcards-import-wizard-modal__labeled-control--disabled"
-    );
+    expect(radio.closest("label")).toBeNull();
+    expect(
+      radio.closest("span.flashcards-import-wizard-modal__labeled-control--disabled")
+    ).not.toBeNull();
   });
 
   test("keeps the label clickable for selectable decks", async () => {

@@ -166,7 +166,8 @@
 }
 
 .flashcards-import-wizard-modal__deck-radio:disabled {
-  cursor: default;
+  cursor:         default;
+  pointer-events: none;
 }
 
 .flashcards-import-wizard-modal__model-section {

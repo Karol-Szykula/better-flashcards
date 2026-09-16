@@ -160,6 +160,7 @@ export function DeckSelection({
                   value={deckName}
                 />
               }
+              controlLabel={shortName}
               disabled={isDisabled}
               key="select"
               label={
