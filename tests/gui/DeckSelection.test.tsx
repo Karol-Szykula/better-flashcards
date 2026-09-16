@@ -116,11 +116,20 @@ describe("DeckSelection", () => {
     ).not.toBeNull();
   });
 
+  test("keeps the accessible name without label association", async () => {
+    respondWithDecks();
+    renderDeckSelection();
+
+    const radio = await screen.findByRole("radio", { name: /Empty/ });
+    expect(radio).toHaveAttribute("aria-label", "Empty");
+  });
+
   test("keeps the label clickable for selectable decks", async () => {
     respondWithDecks();
     renderDeckSelection();
 
     const radio = await screen.findByRole("radio", { name: /Languages/ });
+    expect(radio.closest("label")).not.toBeNull();
     expect(radio.closest("label")).not.toHaveClass(
       "flashcards-import-wizard-modal__labeled-control--disabled"
     );
