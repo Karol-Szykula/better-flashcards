@@ -50,15 +50,23 @@ function renderDeckSelection(vaultNoteIndex = new Map<number, string>()) {
 
 describe("DeckSelection", () => {
   test("renders decks with imported counters", async () => {
+    // given
     respondWithDecks();
     renderDeckSelection();
 
-    expect(await screen.findByText("Languages")).toBeInTheDocument();
-    expect(await screen.findByText("Medicine")).toBeInTheDocument();
-    expect(await screen.findAllByText("0/2")).toHaveLength(2);
+    // when
+    const languages = await screen.findByText("Languages");
+    const medicine = await screen.findByText("Medicine");
+    const counters = await screen.findAllByText("0/2");
+
+    // then
+    expect(languages).toBeInTheDocument();
+    expect(medicine).toBeInTheDocument();
+    expect(counters).toHaveLength(2);
   });
 
   test("disables fully imported decks with a tooltip", async () => {
+    // given
     respondWithDecks();
     renderDeckSelection(
       new Map([
@@ -67,45 +75,64 @@ describe("DeckSelection", () => {
       ])
     );
 
+    // when
     const radio = await screen.findByRole("radio", { name: /Languages/ });
+    const counters = await screen.findAllByText("2/2");
+
+    // then
     expect(radio).toBeDisabled();
     expect(radio).toHaveAttribute("title", "Already in Obsidian");
-    expect(await screen.findAllByText("2/2")).toHaveLength(2);
+    expect(counters).toHaveLength(2);
   });
 
   test("notifies about the selected deck on click", async () => {
+    // given
     respondWithDecks();
     const user = userEvent.setup();
     const { onSelectDeckName } = renderDeckSelection();
+    const radio = await screen.findByRole("radio", { name: /Medicine/ });
 
-    await user.click(await screen.findByRole("radio", { name: /Medicine/ }));
+    // when
+    await user.click(radio);
 
+    // then
     expect(onSelectDeckName).toHaveBeenCalledTimes(1);
     expect(onSelectDeckName).toHaveBeenCalledWith("Medicine");
   });
 
   test("shows an error when Anki is unreachable", async () => {
+    // given
     AnkiConnectMock.setConnectionDown(true);
     renderDeckSelection();
 
-    expect(
-      await screen.findByText(/Anki must be open/)
-    ).toBeInTheDocument();
+    // when
+    const error = await screen.findByText(/Anki must be open/);
+
+    // then
+    expect(error).toBeInTheDocument();
   });
 
   test("marks the radio as clickable", async () => {
+    // given
     respondWithDecks();
     renderDeckSelection();
 
+    // when
     const radio = await screen.findByRole("radio", { name: /Languages/ });
+
+    // then
     expect(radio).toHaveClass("flashcards-import-wizard-modal__deck-radio");
   });
 
   test("greys out empty decks without a label element", async () => {
+    // given
     respondWithDecks();
     renderDeckSelection();
 
+    // when
     const radio = await screen.findByRole("radio", { name: /Empty/ });
+
+    // then
     expect(radio).toBeDisabled();
     expect(
       radio.closest("div.flashcards-import-wizard-modal__list-row")
@@ -117,18 +144,26 @@ describe("DeckSelection", () => {
   });
 
   test("keeps the accessible name without label association", async () => {
+    // given
     respondWithDecks();
     renderDeckSelection();
 
+    // when
     const radio = await screen.findByRole("radio", { name: /Empty/ });
+
+    // then
     expect(radio).toHaveAttribute("aria-label", "Empty");
   });
 
   test("keeps the label clickable for selectable decks", async () => {
+    // given
     respondWithDecks();
     renderDeckSelection();
 
+    // when
     const radio = await screen.findByRole("radio", { name: /Languages/ });
+
+    // then
     expect(radio.closest("label")).not.toBeNull();
     expect(radio.closest("label")).not.toHaveClass(
       "flashcards-import-wizard-modal__labeled-control--disabled"
