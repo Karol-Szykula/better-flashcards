@@ -61,8 +61,11 @@ describe("isKnownModel", () => {
 
 describe("presetFieldMapping", () => {
   test("maps known fields by name and skips the rest", async () => {
+    // given
+    const fields = ["Front", "Back", "Weird"];
+
     // when
-    const mapping = presetFieldMapping(["Front", "Back", "Weird"]);
+    const mapping = presetFieldMapping(fields);
 
     // then
     expect(mapping).toEqual({
@@ -254,9 +257,12 @@ describe("buildNoteMarkdown", () => {
   });
 
   test("appends tags to the inline card", async () => {
+    // given
+    const noteTags = ["t1", "parent::child"];
+
     // when
     const built = buildNoteMarkdown(
-      basicNote(["t1", "parent::child"]),
+      basicNote(noteTags),
       { Front: "Front", Back: "Back" },
       flashcardsTag
     );
@@ -468,16 +474,22 @@ describe("classifyDeckNotes", () => {
 
 describe("resolveFieldMapping", () => {
   test("merges preset with valid saved targets", async () => {
+    // given
+    const fields = ["Front", "Back"];
+
     // when
-    const mapping = resolveFieldMapping(["Front", "Back"], { Back: "Text", Front: "Front" });
+    const mapping = resolveFieldMapping(fields, { Back: "Text", Front: "Front" });
 
     // then
     expect(mapping).toEqual({ Front: "Front", Back: "Text" });
   });
 
   test("drops saved targets outside the allowed list", async () => {
+    // given
+    const fields = ["Front"];
+
     // when
-    const mapping = resolveFieldMapping(["Front"], { Front: "Nope" });
+    const mapping = resolveFieldMapping(fields, { Front: "Nope" });
 
     // then
     expect(mapping).toEqual({

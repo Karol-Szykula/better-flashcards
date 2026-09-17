@@ -425,8 +425,10 @@ describe("Anki - addCards", () => {
     const createdNoteIds = [101, 102];
     AnkiConnectMock.respondWith(createdNoteIds);
 
+    const newCards = [createCard(), createCard()];
+
     // when
-    const ids = await new Anki().addCards([createCard(), createCard()]);
+    const ids = await new Anki().addCards(newCards);
 
     // then
     expect(ids).toEqual(createdNoteIds);
@@ -445,8 +447,10 @@ describe("Anki - addCards", () => {
     };
     AnkiConnectMock.setResponder(() => partialResponse);
 
+    const newCards = [createCard(), createCard()];
+
     // when
-    const ids = await new Anki().addCards([createCard(), createCard()]);
+    const ids = await new Anki().addCards(newCards);
 
     // then
     expect(ids).toEqual([null, 102]);
@@ -465,8 +469,10 @@ describe("Anki - addCards", () => {
       return { result: [singleNoteId], error: null };
     });
 
+    const newCards = [createCard(), createCard()];
+
     // when
-    const ids = await new Anki().addCards([createCard(), createCard()]);
+    const ids = await new Anki().addCards(newCards);
 
     // then
     expect(ids).toEqual([singleNoteId, singleNoteId]);
@@ -484,8 +490,10 @@ describe("Anki - addCards", () => {
     };
     AnkiConnectMock.setResponder(() => alwaysFailingResponse);
 
+    const newCards = [createCard(), createCard()];
+
     // when
-    const ids = await new Anki().addCards([createCard(), createCard()]);
+    const ids = await new Anki().addCards(newCards);
 
     // then
     expect(ids).toEqual([null, null]);

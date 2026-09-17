@@ -154,9 +154,10 @@ describe("Parser - inline cards (Q :: A)", () => {
   test("parses card defined in a heading line", () => {
     // given
     const question = "Heading question";
+    const file = `# ${question} :: answer\n`;
 
     // when
-    const cards = generate(`# ${question} :: answer\n`);
+    const cards = generate(file);
 
     // then
     expect(cards).toHaveLength(1);
@@ -166,9 +167,10 @@ describe("Parser - inline cards (Q :: A)", () => {
   test("parses card defined as a list item", () => {
     // given
     const question = "List question";
+    const file = `- ${question} :: list answer\n`;
 
     // when
-    const cards = generate(`- ${question} :: list answer\n`);
+    const cards = generate(file);
 
     // then
     expect(cards).toHaveLength(1);
@@ -178,9 +180,10 @@ describe("Parser - inline cards (Q :: A)", () => {
   test("converts markdown to HTML in fields", () => {
     // given
     const boldText = "bold";
+    const file = `This is **${boldText}** :: answer\n`;
 
     // when
-    const cards = generate(`This is **${boldText}** :: answer\n`);
+    const cards = generate(file);
 
     // then
     expect(cards[0].fields["Front"]).toContain(
@@ -218,9 +221,10 @@ describe("Parser - spaced repetition cards", () => {
   test("parses single-line spaced card", () => {
     // given
     const prompt = "What is Anki?";
+    const file = `${prompt} #card-spaced\n`;
 
     // when
-    const cards = generate(`${prompt} #card-spaced\n`);
+    const cards = generate(file);
 
     // then
     expect(cards).toHaveLength(1);
@@ -251,9 +255,10 @@ describe("Parser - cloze cards", () => {
     // given
     const word = "Sun";
     const line = `The ==${word}== is hot`;
+    const file = `${line}\n`;
 
     // when
-    const cards = generate(`${line}\n`);
+    const cards = generate(file);
 
     // then
     expect(cards).toHaveLength(1);
@@ -265,9 +270,10 @@ describe("Parser - cloze cards", () => {
   test("converts {curly} syntax to cloze deletion", () => {
     // given
     const word = "dog";
+    const file = `A {${word}} barks\n`;
 
     // when
-    const cards = generate(`A {${word}} barks\n`);
+    const cards = generate(file);
 
     // then
     expect(cards[0].fields["Text"]).toContain(`<p>A {{c1::${word}}} barks</p>`);
@@ -277,11 +283,10 @@ describe("Parser - cloze cards", () => {
     // given
     const secondWord = "dog";
     const firstWord = "cat";
+    const file = `A {2:${secondWord}} and a {1:${firstWord}}\n`;
 
     // when
-    const cards = generate(
-      `A {2:${secondWord}} and a {1:${firstWord}}\n`
-    );
+    const cards = generate(file);
 
     // then
     expect(cards[0].fields["Text"]).toContain(`{{c2::${secondWord}}}`);
@@ -300,9 +305,10 @@ describe("Parser - cloze cards", () => {
     // given
     const math = "E=mc^2";
     const word = "energy";
+    const file = `$${math}$ says ==${word}==\n`;
 
     // when
-    const cards = generate(`$${math}$ says ==${word}==\n`);
+    const cards = generate(file);
 
     // then
     expect(cards).toHaveLength(1);
@@ -316,9 +322,10 @@ describe("Parser - multiline cards with tag", () => {
     // given
     const question = "Two plus two";
     const answer = "Four";
+    const file = `${question}\n#card\n${answer}\n`;
 
     // when
-    const cards = generate(`${question}\n#card\n${answer}\n`);
+    const cards = generate(file);
 
     // then
     expect(cards).toHaveLength(1);
@@ -487,9 +494,10 @@ describe("Parser - public helper methods", () => {
     // given
     const parser = createParser();
     const blockId = 1234567890123;
+    const file = `text\n\n^${blockId}\n`;
 
     // when
-    const orphanIds = parser.getCardsToDelete(`text\n\n^${blockId}\n`);
+    const orphanIds = parser.getCardsToDelete(file);
 
     // then
     expect(orphanIds).toEqual([
@@ -502,11 +510,10 @@ describe("Parser - public helper methods", () => {
     const parser = createParser();
     const firstId = "1111111111111";
     const secondId = "2222222222222";
+    const file = `a ^${firstId} b ^${secondId}\n`;
 
     // when
-    const blocks = parser.getAnkiIDsBlocks(
-      `a ^${firstId} b ^${secondId}\n`
-    );
+    const blocks = parser.getAnkiIDsBlocks(file);
 
     // then
     expect(blocks).toHaveLength(2);
