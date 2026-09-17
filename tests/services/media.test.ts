@@ -46,66 +46,87 @@ function storedFile(app: App, path: string): TFile {
 
 describe("deckAttachmentsFolder", () => {
   test("nests attachments under the deck folder", async () => {
-    expect(deckAttachmentsFolder("Medicine")).toBe("Medicine/attachments");
+    // when
+    const folder = deckAttachmentsFolder("Medicine");
+
+    // then
+    expect(folder).toBe("Medicine/attachments");
   });
 
   test("maps deck hierarchy to nested folders", async () => {
-    expect(deckAttachmentsFolder("Medicine::Anatomy")).toBe(
-      "Medicine/Anatomy/attachments"
-    );
+    // when
+    const folder = deckAttachmentsFolder("Medicine::Anatomy");
+
+    // then
+    expect(folder).toBe("Medicine/Anatomy/attachments");
   });
 });
 
 describe("resolveMediaPath", () => {
   test("places the first file directly in attachments", async () => {
-    expect(resolveMediaPath("Medicine", "image.png", new Set())).toBe(
-      "Medicine/attachments/image.png"
-    );
+    // given
+    const takenPaths = new Set<string>();
+
+    // when
+    const targetPath = resolveMediaPath("Medicine", "image.png", takenPaths);
+
+    // then
+    expect(targetPath).toBe("Medicine/attachments/image.png");
   });
 
   test("suffixes colliding filenames", async () => {
+    // given
     const takenPaths = new Set<string>();
-    expect(resolveMediaPath("Medicine", "image.png", takenPaths)).toBe(
-      "Medicine/attachments/image.png"
-    );
-    expect(resolveMediaPath("Medicine", "image.png", takenPaths)).toBe(
-      "Medicine/attachments/image-1.png"
-    );
-    expect(resolveMediaPath("Medicine", "image.png", takenPaths)).toBe(
-      "Medicine/attachments/image-2.png"
-    );
+
+    // when
+    const firstPath = resolveMediaPath("Medicine", "image.png", takenPaths);
+    const secondPath = resolveMediaPath("Medicine", "image.png", takenPaths);
+    const thirdPath = resolveMediaPath("Medicine", "image.png", takenPaths);
+
+    // then
+    expect(firstPath).toBe("Medicine/attachments/image.png");
+    expect(secondPath).toBe("Medicine/attachments/image-1.png");
+    expect(thirdPath).toBe("Medicine/attachments/image-2.png");
   });
 
   test("suffixes extensionless filenames", async () => {
+    // given
     const takenPaths = new Set<string>();
-    expect(resolveMediaPath("Medicine", "README", takenPaths)).toBe(
-      "Medicine/attachments/README"
-    );
-    expect(resolveMediaPath("Medicine", "README", takenPaths)).toBe(
-      "Medicine/attachments/README-1"
-    );
+
+    // when
+    const firstPath = resolveMediaPath("Medicine", "README", takenPaths);
+    const secondPath = resolveMediaPath("Medicine", "README", takenPaths);
+
+    // then
+    expect(firstPath).toBe("Medicine/attachments/README");
+    expect(secondPath).toBe("Medicine/attachments/README-1");
   });
 });
 
 describe("decodeBase64", () => {
   test("decodes base64 into bytes", async () => {
-    expect(Array.from(new Uint8Array(decodeBase64(sampleBase64)))).toEqual(
-      sampleBytes
-    );
+    // when
+    const decoded = Array.from(new Uint8Array(decodeBase64(sampleBase64)));
+
+    // then
+    expect(decoded).toEqual(sampleBytes);
   });
 });
 
 describe("importDeckMedia", () => {
   test("retrieves files and writes them to attachments", async () => {
+    // given
     const app = App.createConfigured__({ files: {} });
     respondWithMedia({ "a.png": sampleBase64, "b.png": sampleBase64 });
 
+    // when
     const imported = await importDeckMedia(new Anki(), (app.vault as unknown as ObsidianVault), "Medicine", [
       "a.png",
       "b.png",
       "a.png",
     ]);
 
+    // then
     expect(imported).toEqual({
       "a.png": "Medicine/attachments/a.png",
       "b.png": "Medicine/attachments/b.png",
@@ -121,13 +142,16 @@ describe("importDeckMedia", () => {
   });
 
   test("skips files missing in Anki", async () => {
+    // given
     const app = App.createConfigured__({ files: {} });
     respondWithMedia({});
 
+    // when
     const imported = await importDeckMedia(new Anki(), (app.vault as unknown as ObsidianVault), "Medicine", [
       "gone.png",
     ]);
 
+    // then
     expect(imported).toEqual({});
     expect(
       app.vault.getAbstractFileByPath("Medicine/attachments/gone.png")
@@ -135,15 +159,18 @@ describe("importDeckMedia", () => {
   });
 
   test("suffixes files colliding with existing vault files", async () => {
+    // given
     const app = App.createConfigured__({
       files: { "Medicine/attachments/a.png": "old" },
     });
     respondWithMedia({ "a.png": sampleBase64 });
 
+    // when
     const imported = await importDeckMedia(new Anki(), (app.vault as unknown as ObsidianVault), "Medicine", [
       "a.png",
     ]);
 
+    // then
     expect(imported).toEqual({ "a.png": "Medicine/attachments/a-1.png" });
     const untouched = storedFile(app, "Medicine/attachments/a.png");
     expect(await app.vault.read(untouched)).toBe("old");
@@ -152,12 +179,17 @@ describe("importDeckMedia", () => {
 
 describe("rewriteMediaReferences", () => {
   test("replaces image and sound references with wiki links", async () => {
+    // given
     const content =
       '<p><img src="a.png"> and <img src="a.png" alt="x"> plus [sound:b.mp3] and <img src="other.png"></p>';
+
+    // when
     const rewritten = rewriteMediaReferences(content, {
       "a.png": "Medicine/attachments/a.png",
       "b.mp3": "Medicine/attachments/b.mp3",
     });
+
+    // then
     expect(rewritten).toBe(
       "<p>![[Medicine/attachments/a.png]] and ![[Medicine/attachments/a.png]] plus ![[Medicine/attachments/b.mp3]] and <img src=\"other.png\"></p>"
     );

@@ -35,21 +35,37 @@ beforeEach(() => {
 
 describe("isKnownModel", () => {
   test("recognizes the plugin models", async () => {
-    expect(isKnownModel(basicModelName)).toBe(true);
+    // when
+    const known = isKnownModel(basicModelName);
+
+    // then
+    expect(known).toBe(true);
   });
 
   test("recognizes plugin models with extensions", async () => {
-    expect(isKnownModel(`${basicModelName} with source`)).toBe(true);
+    // when
+    const known = isKnownModel(`${basicModelName} with source`);
+
+    // then
+    expect(known).toBe(true);
   });
 
   test("rejects foreign models", async () => {
-    expect(isKnownModel("Custom Language Model")).toBe(false);
+    // when
+    const known = isKnownModel("Custom Language Model");
+
+    // then
+    expect(known).toBe(false);
   });
 });
 
 describe("presetFieldMapping", () => {
   test("maps known fields by name and skips the rest", async () => {
-    expect(presetFieldMapping(["Front", "Back", "Weird"])).toEqual({
+    // when
+    const mapping = presetFieldMapping(["Front", "Back", "Weird"]);
+
+    // then
+    expect(mapping).toEqual({
       Front: "Front",
       Back: "Back",
       Weird: "Skip",
@@ -74,6 +90,7 @@ describe("discoverDeckModels", () => {
   }
 
   test("groups fields by model", async () => {
+    // given
     respondWithNotes([
       {
         noteId: 1,
@@ -92,8 +109,10 @@ describe("discoverDeckModels", () => {
       },
     ]);
 
+    // when
     const models = await discoverDeckModels(new Anki(), deckName);
 
+    // then
     expect(models).toEqual([
       {
         modelName: "Basic",
@@ -115,10 +134,13 @@ describe("discoverDeckModels", () => {
   });
 
   test("labels notes without a model as Unknown", async () => {
+    // given
     respondWithNotes([{ noteId: 1, fields: { Front: { value: "q" } } }]);
 
+    // when
     const models = await discoverDeckModels(new Anki(), deckName);
 
+    // then
     expect(models).toEqual([
       { modelName: "Unknown", fields: ["Front"], sampleValues: { Front: "q" } },
     ]);
@@ -134,7 +156,12 @@ describe("normalizeCardText", () => {
     ["<div><p>x</p></div>", "x"],
     ["<p><code>f(x)</code></p>", "`f(x)`"],
   ])("treats as equal: %p vs %p", (anki, obsidian) => {
-    expect(normalizeCardText(anki)).toBe(normalizeCardText(obsidian));
+    // when
+    const normalizedAnki = normalizeCardText(anki);
+    const normalizedObsidian = normalizeCardText(obsidian);
+
+    // then
+    expect(normalizedAnki).toBe(normalizedObsidian);
   });
 
   test.each([
@@ -143,12 +170,18 @@ describe("normalizeCardText", () => {
     ["cat", "Cat"],
     ["<p>a</p>", "<p>a b</p>"],
   ])("treats as different: %p vs %p", (anki, obsidian) => {
-    expect(normalizeCardText(anki)).not.toBe(normalizeCardText(obsidian));
+    // when
+    const normalizedAnki = normalizeCardText(anki);
+    const normalizedObsidian = normalizeCardText(obsidian);
+
+    // then
+    expect(normalizedAnki).not.toBe(normalizedObsidian);
   });
 });
 
 describe("fetchDeckNotes", () => {
   test("fetches notes in chunks and reports progress", async () => {
+    // given
     const totalNotes = 250;
     const progress: Array<[number, number]> = [];
     AnkiConnectMock.setResponder((request) => {
@@ -174,10 +207,12 @@ describe("fetchDeckNotes", () => {
       }
     });
 
+    // when
     const notes = await fetchDeckNotes(new Anki(), "Languages", (fetched, total) => {
       progress.push([fetched, total]);
     });
 
+    // then
     expect(notes).toHaveLength(totalNotes);
     expect(notes[0].noteId).toBe(1);
     expect(notes[totalNotes - 1].noteId).toBe(totalNotes);
@@ -210,22 +245,29 @@ describe("buildNoteMarkdown", () => {
   }
 
   test("builds inline syntax from Front and Back", async () => {
+    // when
     const built = buildNoteMarkdown(basicNote(), { Front: "Front", Back: "Back" }, flashcardsTag);
+
+    // then
     expect(built.markdown).toBe("What is 2+2? :: 4\n");
     expect(built.media).toEqual([]);
   });
 
   test("appends tags to the inline card", async () => {
+    // when
     const built = buildNoteMarkdown(
       basicNote(["t1", "parent::child"]),
       { Front: "Front", Back: "Back" },
       flashcardsTag
     );
+
+    // then
     expect(built.markdown).toContain("#t1");
     expect(built.markdown).toContain("#parent/child");
   });
 
   test("converts Anki cloze deletions", async () => {
+    // given
     const note = {
       noteId: 2,
       modelName: "Cloze",
@@ -233,15 +275,20 @@ describe("buildNoteMarkdown", () => {
       tags: [] as string[],
       cards: [8],
     };
+
+    // when
     const built = buildNoteMarkdown(
       note,
       { Text: "Text", Extra: "Extra" },
       flashcardsTag
     );
+
+    // then
     expect(built.markdown).toContain("==hidden==");
   });
 
   test("builds spaced syntax from Prompt", async () => {
+    // given
     const note = {
       noteId: 3,
       modelName: "Spaced",
@@ -249,11 +296,16 @@ describe("buildNoteMarkdown", () => {
       tags: [] as string[],
       cards: [9],
     };
+
+    // when
     const built = buildNoteMarkdown(note, { Prompt: "Prompt" }, flashcardsTag);
+
+    // then
     expect(built.markdown).toBe("Recall this #card-spaced\n");
   });
 
   test("extracts image and sound references", async () => {
+    // given
     const note = {
       noteId: 4,
       modelName: "Basic",
@@ -264,20 +316,27 @@ describe("buildNoteMarkdown", () => {
       tags: [] as string[],
       cards: [10],
     };
+
+    // when
     const built = buildNoteMarkdown(
       note,
       { Front: "Front", Back: "Back" },
       flashcardsTag
     );
+
+    // then
     expect(built.media).toEqual(["a.png", "b.mp3"]);
   });
 
   test("returns empty markdown when everything is skipped", async () => {
+    // when
     const built = buildNoteMarkdown(
       basicNote(),
       { Front: "Skip", Back: "Skip" },
       flashcardsTag
     );
+
+    // then
     expect(built.markdown).toBe("");
   });
 });
@@ -290,6 +349,7 @@ describe("buildNoteMarkdown round-trip", () => {
   }
 
   test("inline markdown parses back to one card", async () => {
+    // given
     const note = {
       noteId: 1,
       modelName: "Basic",
@@ -300,13 +360,18 @@ describe("buildNoteMarkdown round-trip", () => {
       tags: [] as string[],
       cards: [7],
     };
+
+    // when
     const built = buildNoteMarkdown(note, { Front: "Front", Back: "Back" }, "card");
     const cards = parseBuilt(built.markdown);
+
+    // then
     expect(cards).toHaveLength(1);
     expect(cards[0]).toBeInstanceOf(Inlinecard);
   });
 
   test("cloze markdown parses back to one card", async () => {
+    // given
     const note = {
       noteId: 2,
       modelName: "Cloze",
@@ -314,13 +379,18 @@ describe("buildNoteMarkdown round-trip", () => {
       tags: [] as string[],
       cards: [8],
     };
+
+    // when
     const built = buildNoteMarkdown(note, { Text: "Text" }, "card");
     const cards = parseBuilt(built.markdown);
+
+    // then
     expect(cards).toHaveLength(1);
     expect(cards[0]).toBeInstanceOf(Clozecard);
   });
 
   test("spaced markdown parses back to one card", async () => {
+    // given
     const note = {
       noteId: 3,
       modelName: "Spaced",
@@ -328,13 +398,18 @@ describe("buildNoteMarkdown round-trip", () => {
       tags: [] as string[],
       cards: [9],
     };
+
+    // when
     const built = buildNoteMarkdown(note, { Prompt: "Prompt" }, "card");
     const cards = parseBuilt(built.markdown);
+
+    // then
     expect(cards).toHaveLength(1);
     expect(cards[0]).toBeInstanceOf(Spacedcard);
   });
 
   test("front-only fallback parses back to one card", async () => {
+    // given
     const note = {
       noteId: 4,
       modelName: "Basic",
@@ -342,8 +417,12 @@ describe("buildNoteMarkdown round-trip", () => {
       tags: [] as string[],
       cards: [10],
     };
+
+    // when
     const built = buildNoteMarkdown(note, { Front: "Front" }, "card");
     const cards = parseBuilt(built.markdown);
+
+    // then
     expect(cards).toHaveLength(1);
     expect(cards[0]).toBeInstanceOf(Flashcard);
   });
@@ -362,7 +441,10 @@ describe("classifyDeckNotes", () => {
   };
 
   test("marks unknown notes as new", async () => {
+    // when
     const classified = classifyDeckNotes([firstNote, secondNote], new Map());
+
+    // then
     expect(classified).toEqual([
       { note: firstNote, status: "new" },
       { note: secondNote, status: "new" },
@@ -370,8 +452,13 @@ describe("classifyDeckNotes", () => {
   });
 
   test("marks known notes as conflicts with vault path", async () => {
+    // given
     const vaultNoteIndex = new Map([[2, "Note.md"]]);
+
+    // when
     const classified = classifyDeckNotes([firstNote, secondNote], vaultNoteIndex);
+
+    // then
     expect(classified).toEqual([
       { note: firstNote, status: "new" },
       { note: secondNote, status: "conflict", vaultPath: "Note.md" },
@@ -381,19 +468,29 @@ describe("classifyDeckNotes", () => {
 
 describe("resolveFieldMapping", () => {
   test("merges preset with valid saved targets", async () => {
-    expect(
-      resolveFieldMapping(["Front", "Back"], { Back: "Text", Front: "Front" })
-    ).toEqual({ Front: "Front", Back: "Text" });
+    // when
+    const mapping = resolveFieldMapping(["Front", "Back"], { Back: "Text", Front: "Front" });
+
+    // then
+    expect(mapping).toEqual({ Front: "Front", Back: "Text" });
   });
 
   test("drops saved targets outside the allowed list", async () => {
-    expect(resolveFieldMapping(["Front"], { Front: "Nope" })).toEqual({
+    // when
+    const mapping = resolveFieldMapping(["Front"], { Front: "Nope" });
+
+    // then
+    expect(mapping).toEqual({
       Front: "Front",
     });
   });
 
   test("keeps preset without saved mapping", async () => {
-    expect(resolveFieldMapping(["Front"], undefined)).toEqual({
+    // when
+    const mapping = resolveFieldMapping(["Front"], undefined);
+
+    // then
+    expect(mapping).toEqual({
       Front: "Front",
     });
   });
@@ -401,12 +498,14 @@ describe("resolveFieldMapping", () => {
 
 describe("mergeFieldMappings", () => {
   test("merges incoming mappings per model without dropping others", async () => {
-    expect(
-      mergeFieldMappings(
-        { Basic: { Front: "Front" }, Other: { A: "Skip" } },
-        { Basic: { Back: "Back" } }
-      )
-    ).toEqual({
+    // when
+    const merged = mergeFieldMappings(
+      { Basic: { Front: "Front" }, Other: { A: "Skip" } },
+      { Basic: { Back: "Back" } }
+    );
+
+    // then
+    expect(merged).toEqual({
       Basic: { Front: "Front", Back: "Back" },
       Other: { A: "Skip" },
     });

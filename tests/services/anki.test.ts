@@ -65,64 +65,108 @@ function createCard(): Flashcard {
 
 describe("Anki - connection", () => {
   test("ping returns true when AnkiConnect reports version 6", async () => {
+    // given
     const reportedVersion = ankiConnectVersion;
     AnkiConnectMock.respondWith(reportedVersion);
-    await expect(new Anki().ping()).resolves.toBe(true);
+
+    // when
+    const connected = await new Anki().ping();
+
+    // then
+    expect(connected).toBe(true);
     expect(AnkiConnectMock.requests).toHaveLength(1);
     expect(AnkiConnectMock.requests[0].action).toBe("version");
   });
 
   test("ping returns false when version differs", async () => {
+    // given
     const unsupportedVersion = 5;
     AnkiConnectMock.respondWith(unsupportedVersion);
-    await expect(new Anki().ping()).resolves.toBe(false);
+
+    // when
+    const connected = await new Anki().ping();
+
+    // then
+    expect(connected).toBe(false);
   });
 
   test("ping rejects when Anki is unreachable", async () => {
+    // given
     AnkiConnectMock.setConnectionDown(true);
-    await expect(new Anki().ping()).rejects.toThrow();
+
+    // when
+    const ping = new Anki().ping();
+
+    // then
+    await expect(ping).rejects.toThrow();
   });
 
   test("invoke rejects a malformed response", async () => {
+    // given
     const malformedResponse = { result: 6 };
     AnkiConnectMock.setResponder(() => malformedResponse);
-    await expect(new Anki().ping()).rejects.toThrow();
+
+    // when
+    const ping = new Anki().ping();
+
+    // then
+    await expect(ping).rejects.toThrow();
   });
 
   test("invoke rejects an error response", async () => {
+    // given
     const ankiErrorResponse: Record<string, unknown> = {
       result: null,
       error: "boom",
     };
     AnkiConnectMock.setResponder(() => ankiErrorResponse);
-    await expect(new Anki().ping()).rejects.toThrow("boom");
+
+    // when
+    const ping = new Anki().ping();
+
+    // then
+    await expect(ping).rejects.toThrow("boom");
   });
 
   test("requestPermission forwards the AnkiConnect response", async () => {
+    // given
     const grantedPermission = { permission: "granted" };
     AnkiConnectMock.respondWith(grantedPermission);
-    await expect(new Anki().requestPermission()).resolves.toEqual(
-      grantedPermission,
-    );
+
+    // when
+    const permission = await new Anki().requestPermission();
+
+    // then
+    expect(permission).toEqual(grantedPermission);
     expect(AnkiConnectMock.requests[0].action).toBe("requestPermission");
   });
 });
 
 describe("Anki - decks and notes lookup", () => {
   test("getDeckNames returns the deck list", async () => {
+    // given
     const deckList = ["Default", "Languages"];
     AnkiConnectMock.respondWith(deckList);
-    await expect(new Anki().getDeckNames()).resolves.toEqual(deckList);
+
+    // when
+    const decks = await new Anki().getDeckNames();
+
+    // then
+    expect(decks).toEqual(deckList);
     expect(AnkiConnectMock.requests[0]).toMatchObject({ action: "deckNames" });
   });
 
   test("findNotes sends the query", async () => {
+    // given
     const deckQuery = "deck:Default";
     const foundNoteIds = [11, 22];
     AnkiConnectMock.respondWith(foundNoteIds);
-    await expect(new Anki().findNotes(deckQuery)).resolves.toEqual(
-      foundNoteIds,
-    );
+
+    // when
+    const noteIds = await new Anki().findNotes(deckQuery);
+
+    // then
+    expect(noteIds).toEqual(foundNoteIds);
     expect(AnkiConnectMock.requests[0]).toMatchObject({
       action: "findNotes",
       params: { query: deckQuery },
@@ -130,12 +174,16 @@ describe("Anki - decks and notes lookup", () => {
   });
 
   test("getCards asks notesInfo for the given ids", async () => {
+    // given
     const requestedNoteIds = [1, 2];
     const notesInfo = [{ noteId: 1 }];
     AnkiConnectMock.respondWith(notesInfo);
-    await expect(new Anki().getCards(requestedNoteIds)).resolves.toEqual(
-      notesInfo,
-    );
+
+    // when
+    const cards = await new Anki().getCards(requestedNoteIds);
+
+    // then
+    expect(cards).toEqual(notesInfo);
     expect(AnkiConnectMock.requests[0]).toMatchObject({
       action: "notesInfo",
       params: { notes: requestedNoteIds },
@@ -143,9 +191,14 @@ describe("Anki - decks and notes lookup", () => {
   });
 
   test("cardsInfo asks cardsInfo for the given ids", async () => {
+    // given
     const requestedCardIds = [3];
     AnkiConnectMock.respondWith([]);
+
+    // when
     await new Anki().cardsInfo(requestedCardIds);
+
+    // then
     expect(AnkiConnectMock.requests[0]).toMatchObject({
       action: "cardsInfo",
       params: { cards: requestedCardIds },
@@ -153,9 +206,14 @@ describe("Anki - decks and notes lookup", () => {
   });
 
   test("deleteCards asks deleteNotes", async () => {
+    // given
     const deletedNoteIds = [4];
     AnkiConnectMock.respondWith(null);
+
+    // when
     await new Anki().deleteCards(deletedNoteIds);
+
+    // then
     expect(AnkiConnectMock.requests[0]).toMatchObject({
       action: "deleteNotes",
       params: { notes: deletedNoteIds },
@@ -163,12 +221,16 @@ describe("Anki - decks and notes lookup", () => {
   });
 
   test("createDeck sends the deck name", async () => {
+    // given
     const newDeckName = "Languages";
     const newDeckId = 42;
     AnkiConnectMock.respondWith(newDeckId);
-    await expect(new Anki().createDeck(newDeckName)).resolves.toEqual(
-      newDeckId,
-    );
+
+    // when
+    const deckId = await new Anki().createDeck(newDeckName);
+
+    // then
+    expect(deckId).toEqual(newDeckId);
     expect(AnkiConnectMock.requests[0]).toMatchObject({
       action: "createDeck",
       params: { deck: newDeckName },
@@ -176,12 +238,16 @@ describe("Anki - decks and notes lookup", () => {
   });
 
   test("changeDeck sends card ids and the deck name", async () => {
+    // given
     const movedCardIds = [5, 6];
     const targetDeck = "Languages";
     AnkiConnectMock.respondWith(null);
-    await expect(
-      new Anki().changeDeck(movedCardIds, targetDeck),
-    ).resolves.toBeNull();
+
+    // when
+    const result = await new Anki().changeDeck(movedCardIds, targetDeck);
+
+    // then
+    expect(result).toBeNull();
     expect(AnkiConnectMock.requests[0]).toMatchObject({
       action: "changeDeck",
       params: { cards: movedCardIds, deck: targetDeck },
@@ -199,11 +265,14 @@ describe("Anki - models", () => {
   ];
 
   test("createModels builds the four base models", async () => {
+    // given
     AnkiConnectMock.respondWith(modelCreationResults);
-    await expect(new Anki().createModels(false, false)).resolves.toEqual(
-      modelCreationResults,
-    );
 
+    // when
+    const created = await new Anki().createModels(false, false);
+
+    // then
+    expect(created).toEqual(modelCreationResults);
     const actions = multiSubActions();
     expect(actions).toHaveLength(4);
     expect(actions.map((a) => a.action)).toEqual([
@@ -217,11 +286,14 @@ describe("Anki - models", () => {
   });
 
   test("createModels with source support adds the Source field", async () => {
+    // given
     AnkiConnectMock.respondWith(modelCreationResults);
-    await expect(new Anki().createModels(true, false)).resolves.toEqual(
-      modelCreationResults,
-    );
 
+    // when
+    const created = await new Anki().createModels(true, false);
+
+    // then
+    expect(created).toEqual(modelCreationResults);
     const actions = multiSubActions();
     const names = actions.map((a) => (a.params["modelName"] as string) ?? "");
     for (const name of names) {
@@ -232,12 +304,15 @@ describe("Anki - models", () => {
   });
 
   test("createModels with code highlight support doubles the models", async () => {
+    // given
     const doubledResults = new Array(8).fill(null);
     AnkiConnectMock.respondWith(doubledResults);
-    await expect(new Anki().createModels(false, true)).resolves.toEqual(
-      doubledResults,
-    );
 
+    // when
+    const created = await new Anki().createModels(false, true);
+
+    // then
+    expect(created).toEqual(doubledResults);
     const actions = multiSubActions();
     expect(actions).toHaveLength(8);
     const names = actions.map((a) => (a.params["modelName"] as string) ?? "");
@@ -249,12 +324,16 @@ describe("Anki - models", () => {
 
 describe("Anki - media", () => {
   test("retrieveMediaFile sends the filename", async () => {
+    // given
     const mediaContent = "ZGF0YQ==";
     const mediaFilename = "image.png";
     AnkiConnectMock.respondWith(mediaContent);
-    await expect(
-      new Anki().retrieveMediaFile(mediaFilename)
-    ).resolves.toEqual(mediaContent);
+
+    // when
+    const content = await new Anki().retrieveMediaFile(mediaFilename);
+
+    // then
+    expect(content).toEqual(mediaContent);
     expect(AnkiConnectMock.requests[0]).toMatchObject({
       action: "retrieveMediaFile",
       params: { filename: mediaFilename },
@@ -262,13 +341,16 @@ describe("Anki - media", () => {
   });
 
   test("storeMediaFiles skips the request when there is no media", async () => {
-    await expect(new Anki().storeMediaFiles([createCard()])).resolves.toEqual(
-      {},
-    );
+    // when
+    const stored = await new Anki().storeMediaFiles([createCard()]);
+
+    // then
+    expect(stored).toEqual({});
     expect(AnkiConnectMock.requests).toHaveLength(0);
   });
 
   test("storeMediaFiles stores each media file", async () => {
+    // given
     const mediaFilename = "image.png";
     const mediaContent = "ZGF0YQ==";
     const storeResults: unknown[] = [null];
@@ -277,10 +359,11 @@ describe("Anki - media", () => {
     card.mediaNames = [mediaFilename];
     card.mediaBase64Encoded = [mediaContent];
 
-    await expect(new Anki().storeMediaFiles([card])).resolves.toEqual(
-      storeResults,
-    );
+    // when
+    const stored = await new Anki().storeMediaFiles([card]);
 
+    // then
+    expect(stored).toEqual(storeResults);
     const actions = multiSubActions();
     expect(actions).toEqual([
       {
@@ -291,15 +374,20 @@ describe("Anki - media", () => {
   });
 
   test("storeCodeHighlightMedias does nothing when files exist", async () => {
+    // given
     AnkiConnectMock.respondWith("file-content");
-    await expect(
-      new Anki().storeCodeHighlightMedias(),
-    ).resolves.toBeUndefined();
+
+    // when
+    const stored = await new Anki().storeCodeHighlightMedias();
+
+    // then
+    expect(stored).toBeUndefined();
     expect(AnkiConnectMock.requests).toHaveLength(1);
     expect(AnkiConnectMock.requests[0].action).toBe("retrieveMediaFile");
   });
 
   test("storeCodeHighlightMedias stores the three files when missing", async () => {
+    // given
     const highlightStoreResults: unknown[] = [null, null, null];
     const expectedHighlightFiles = [
       "_highlight.js",
@@ -311,10 +399,12 @@ describe("Anki - media", () => {
         ? { result: null, error: null }
         : { result: highlightStoreResults, error: null },
     );
-    await expect(
-      new Anki().storeCodeHighlightMedias(),
-    ).resolves.toEqual(highlightStoreResults);
 
+    // when
+    const stored = await new Anki().storeCodeHighlightMedias();
+
+    // then
+    expect(stored).toEqual(highlightStoreResults);
     expect(AnkiConnectMock.requests).toHaveLength(2);
     const actions = lastMultiSubActions();
     expect(actions.map((a) => a.action)).toEqual([
@@ -331,10 +421,14 @@ describe("Anki - media", () => {
 
 describe("Anki - addCards", () => {
   test("batch success resolves the note ids", async () => {
+    // given
     const createdNoteIds = [101, 102];
     AnkiConnectMock.respondWith(createdNoteIds);
+
+    // when
     const ids = await new Anki().addCards([createCard(), createCard()]);
 
+    // then
     expect(ids).toEqual(createdNoteIds);
     expect(AnkiConnectMock.requests).toHaveLength(1);
     const request = AnkiConnectMock.requests[0];
@@ -344,17 +438,23 @@ describe("Anki - addCards", () => {
   });
 
   test("partial per-note errors still resolve the result array", async () => {
+    // given
     const partialResponse: Record<string, unknown> = {
       result: [null, 102],
       error: ["duplicate", null],
     };
     AnkiConnectMock.setResponder(() => partialResponse);
+
+    // when
     const ids = await new Anki().addCards([createCard(), createCard()]);
+
+    // then
     expect(ids).toEqual([null, 102]);
     expect(AnkiConnectMock.requests).toHaveLength(1);
   });
 
   test("failed batch falls back to one note at a time", async () => {
+    // given
     const batchError = "batch failed";
     const singleNoteId = 777;
     AnkiConnectMock.setResponder((request) => {
@@ -365,8 +465,10 @@ describe("Anki - addCards", () => {
       return { result: [singleNoteId], error: null };
     });
 
+    // when
     const ids = await new Anki().addCards([createCard(), createCard()]);
 
+    // then
     expect(ids).toEqual([singleNoteId, singleNoteId]);
     expect(AnkiConnectMock.requests).toHaveLength(3);
     for (const single of AnkiConnectMock.requests.slice(1)) {
@@ -375,18 +477,24 @@ describe("Anki - addCards", () => {
   });
 
   test("failed single notes resolve to null", async () => {
+    // given
     const alwaysFailingResponse: Record<string, unknown> = {
       result: null,
       error: "boom",
     };
     AnkiConnectMock.setResponder(() => alwaysFailingResponse);
+
+    // when
     const ids = await new Anki().addCards([createCard(), createCard()]);
+
+    // then
     expect(ids).toEqual([null, null]);
   });
 });
 
 describe("Anki - updateCards", () => {
   test("updates fields, merges tags and moves the deck", async () => {
+    // given
     AnkiConnectMock.respondWith([null, null, null, null]);
     const card = createCard();
     const tagsInAnki = ["a", "b"];
@@ -396,8 +504,10 @@ describe("Anki - updateCards", () => {
     card.oldTags = tagsInAnki;
     card.tags = tagsInObsidian;
 
+    // when
     await new Anki().updateCards([card]);
 
+    // then
     const actions = multiSubActions();
     expect(actions.map((a) => a.action)).toEqual([
       "updateNoteFields",
