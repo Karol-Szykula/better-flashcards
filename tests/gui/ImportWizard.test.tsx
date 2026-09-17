@@ -61,6 +61,7 @@ describe("ImportWizard - first page", () => {
   const secondImportedNoteFileName = "Other.md";
   const secondImportedNoteId = 2222222222222;
   const secondImportedNoteContent = `Q :: B\n^${secondImportedNoteId}\n`;
+
   test("given a deck in Anki when the wizard opens then shows all page indicator labels", async () => {
     // given
     respondWithDeckNotes({ Languages: [1111111111111] });

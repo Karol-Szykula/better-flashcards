@@ -87,10 +87,11 @@ describe("DeckSelection", () => {
   test("given fully imported decks when the list renders then disables them with a tooltip", async () => {
     // given
     respondWithDecks();
+    const importedFileName = "Note.md";
     renderDeckSelection(
       new Map([
-        [11, "Note.md"],
-        [22, "Note.md"],
+        [11, importedFileName],
+        [22, importedFileName],
       ])
     );
 

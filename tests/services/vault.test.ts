@@ -15,6 +15,11 @@ import {
 } from "src/services/vault";
 
 describe("extractFileNoteIndex", () => {
+  const noteFileName = "Note.md";
+  const noteId = 1111111111111;
+  const noteContent = `Q :: A\n^${noteId}\n`;
+  const cardOnlyContent = "Q :: A\n";
+
   test("given content with a block id when extracted then collects it with the file path", async () => {
     // given
     const settings = createSettings();
@@ -22,15 +27,10 @@ describe("extractFileNoteIndex", () => {
     const vaultNoteIndex = new Map<number, string>();
 
     // when
-    extractFileNoteIndex(
-      parser,
-      "Q :: A\n^1111111111111\n",
-      "Note.md",
-      vaultNoteIndex
-    );
+    extractFileNoteIndex(parser, noteContent, noteFileName, vaultNoteIndex);
 
     // then
-    expect(vaultNoteIndex).toEqual(new Map([[1111111111111, "Note.md"]]));
+    expect(vaultNoteIndex).toEqual(new Map([[noteId, noteFileName]]));
   });
 
   test("given content without block ids when extracted then collects nothing", async () => {
@@ -40,7 +40,7 @@ describe("extractFileNoteIndex", () => {
     const vaultNoteIndex = new Map<number, string>();
 
     // when
-    extractFileNoteIndex(parser, "Q :: A\n", "Note.md", vaultNoteIndex);
+    extractFileNoteIndex(parser, cardOnlyContent, noteFileName, vaultNoteIndex);
 
     // then
     expect(vaultNoteIndex.size).toBe(0);
@@ -48,13 +48,18 @@ describe("extractFileNoteIndex", () => {
 });
 
 describe("collectVaultNoteIndex", () => {
+  const noteFileName = "Note.md";
+  const noteId = 1111111111111;
+  const nestedNoteFileName = "Nested/Card.md";
+  const nestedNoteId = 2222222222222;
+
   test("given three vault files when scanned then collects ids from the two with cards", async () => {
     // given
     const app = App.createConfigured__({
       files: {
-        "Note.md": "Q :: A\n^1111111111111\n",
+        [noteFileName]: `Q :: A\n^${noteId}\n`,
         "Other.md": "plain text\n",
-        "Nested/Card.md": "Q :: B\n^2222222222222\n",
+        [nestedNoteFileName]: `Q :: B\n^${nestedNoteId}\n`,
       },
     });
 
@@ -67,8 +72,8 @@ describe("collectVaultNoteIndex", () => {
     // then
     expect(vaultNoteIndex).toEqual(
       new Map([
-        [1111111111111, "Note.md"],
-        [2222222222222, "Nested/Card.md"],
+        [noteId, noteFileName],
+        [nestedNoteId, nestedNoteFileName],
       ])
     );
   });

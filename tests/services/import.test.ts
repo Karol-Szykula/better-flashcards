@@ -459,7 +459,8 @@ describe("classifyDeckNotes", () => {
 
   test("given known notes when classified then marks conflicts with vault path", async () => {
     // given
-    const vaultNoteIndex = new Map([[2, "Note.md"]]);
+    const vaultFileName = "Note.md";
+    const vaultNoteIndex = new Map([[2, vaultFileName]]);
 
     // when
     const classified = classifyDeckNotes([firstNote, secondNote], vaultNoteIndex);
@@ -467,7 +468,7 @@ describe("classifyDeckNotes", () => {
     // then
     expect(classified).toEqual([
       { note: firstNote, status: "new" },
-      { note: secondNote, status: "conflict", vaultPath: "Note.md" },
+      { note: secondNote, status: "conflict", vaultPath: vaultFileName },
     ]);
   });
 });
