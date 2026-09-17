@@ -34,7 +34,7 @@ beforeEach(() => {
 });
 
 describe("isKnownModel", () => {
-  test("recognizes the plugin models", async () => {
+  test("given a plugin model when checked then recognizes it", async () => {
     // when
     const known = isKnownModel(basicModelName);
 
@@ -42,7 +42,7 @@ describe("isKnownModel", () => {
     expect(known).toBe(true);
   });
 
-  test("recognizes plugin models with extensions", async () => {
+  test("given a plugin model with extensions when checked then recognizes it", async () => {
     // when
     const known = isKnownModel(`${basicModelName} with source`);
 
@@ -50,7 +50,7 @@ describe("isKnownModel", () => {
     expect(known).toBe(true);
   });
 
-  test("rejects foreign models", async () => {
+  test("given a foreign model when checked then rejects it", async () => {
     // when
     const known = isKnownModel("Custom Language Model");
 
@@ -60,7 +60,7 @@ describe("isKnownModel", () => {
 });
 
 describe("presetFieldMapping", () => {
-  test("maps known fields by name and skips the rest", async () => {
+  test("given known and unknown fields when mapped then maps by name and skips the rest", async () => {
     // given
     const fields = ["Front", "Back", "Weird"];
 
@@ -92,7 +92,7 @@ describe("discoverDeckModels", () => {
     });
   }
 
-  test("groups fields by model", async () => {
+  test("given notes of two models when discovered then groups fields by model", async () => {
     // given
     respondWithNotes([
       {
@@ -136,7 +136,7 @@ describe("discoverDeckModels", () => {
     });
   });
 
-  test("labels notes without a model as Unknown", async () => {
+  test("given a note without a model when discovered then labels it Unknown", async () => {
     // given
     respondWithNotes([{ noteId: 1, fields: { Front: { value: "q" } } }]);
 
@@ -158,7 +158,7 @@ describe("normalizeCardText", () => {
     ["a   b\nc", "a b c"],
     ["<div><p>x</p></div>", "x"],
     ["<p><code>f(x)</code></p>", "`f(x)`"],
-  ])("treats as equal: %p vs %p", (anki, obsidian) => {
+  ])("given same content in both formats when normalized then treats as equal: %p vs %p", (anki, obsidian) => {
     // when
     const normalizedAnki = normalizeCardText(anki);
     const normalizedObsidian = normalizeCardText(obsidian);
@@ -172,7 +172,7 @@ describe("normalizeCardText", () => {
     ["Hello", "Hello world"],
     ["cat", "Cat"],
     ["<p>a</p>", "<p>a b</p>"],
-  ])("treats as different: %p vs %p", (anki, obsidian) => {
+  ])("given different content when normalized then treats as different: %p vs %p", (anki, obsidian) => {
     // when
     const normalizedAnki = normalizeCardText(anki);
     const normalizedObsidian = normalizeCardText(obsidian);
@@ -183,7 +183,7 @@ describe("normalizeCardText", () => {
 });
 
 describe("fetchDeckNotes", () => {
-  test("fetches notes in chunks and reports progress", async () => {
+  test("given 250 notes when fetched then splits into chunks and reports progress", async () => {
     // given
     const totalNotes = 250;
     const progress: Array<[number, number]> = [];
@@ -247,7 +247,7 @@ describe("buildNoteMarkdown", () => {
     };
   }
 
-  test("builds inline syntax from Front and Back", async () => {
+  test("given Front and Back when built then returns inline syntax", async () => {
     // when
     const built = buildNoteMarkdown(basicNote(), { Front: "Front", Back: "Back" }, flashcardsTag);
 
@@ -256,7 +256,7 @@ describe("buildNoteMarkdown", () => {
     expect(built.media).toEqual([]);
   });
 
-  test("appends tags to the inline card", async () => {
+  test("given note tags when built then appends them to the inline card", async () => {
     // given
     const noteTags = ["t1", "parent::child"];
 
@@ -272,7 +272,7 @@ describe("buildNoteMarkdown", () => {
     expect(built.markdown).toContain("#parent/child");
   });
 
-  test("converts Anki cloze deletions", async () => {
+  test("given Anki cloze markers when built then converts them to deletions", async () => {
     // given
     const note = {
       noteId: 2,
@@ -293,7 +293,7 @@ describe("buildNoteMarkdown", () => {
     expect(built.markdown).toContain("==hidden==");
   });
 
-  test("builds spaced syntax from Prompt", async () => {
+  test("given a Prompt when built then returns spaced syntax", async () => {
     // given
     const note = {
       noteId: 3,
@@ -310,7 +310,7 @@ describe("buildNoteMarkdown", () => {
     expect(built.markdown).toBe("Recall this #card-spaced\n");
   });
 
-  test("extracts image and sound references", async () => {
+  test("given media references when built then extracts image and sound names", async () => {
     // given
     const note = {
       noteId: 4,
@@ -334,7 +334,7 @@ describe("buildNoteMarkdown", () => {
     expect(built.media).toEqual(["a.png", "b.mp3"]);
   });
 
-  test("returns empty markdown when everything is skipped", async () => {
+  test("given only skipped fields when built then returns empty markdown", async () => {
     // when
     const built = buildNoteMarkdown(
       basicNote(),
@@ -354,7 +354,7 @@ describe("buildNoteMarkdown round-trip", () => {
     return parser.generateFlashcards(markdown, "Default", "Vault", "Note", []);
   }
 
-  test("inline markdown parses back to one card", async () => {
+  test("given built inline markdown when parsed back then returns one inline card", async () => {
     // given
     const note = {
       noteId: 1,
@@ -376,7 +376,7 @@ describe("buildNoteMarkdown round-trip", () => {
     expect(cards[0]).toBeInstanceOf(Inlinecard);
   });
 
-  test("cloze markdown parses back to one card", async () => {
+  test("given built cloze markdown when parsed back then returns one cloze card", async () => {
     // given
     const note = {
       noteId: 2,
@@ -395,7 +395,7 @@ describe("buildNoteMarkdown round-trip", () => {
     expect(cards[0]).toBeInstanceOf(Clozecard);
   });
 
-  test("spaced markdown parses back to one card", async () => {
+  test("given built spaced markdown when parsed back then returns one spaced card", async () => {
     // given
     const note = {
       noteId: 3,
@@ -414,7 +414,7 @@ describe("buildNoteMarkdown round-trip", () => {
     expect(cards[0]).toBeInstanceOf(Spacedcard);
   });
 
-  test("front-only fallback parses back to one card", async () => {
+  test("given a front-only note when built and parsed back then returns one card", async () => {
     // given
     const note = {
       noteId: 4,
@@ -446,7 +446,7 @@ describe("classifyDeckNotes", () => {
     tags: [] as string[],
   };
 
-  test("marks unknown notes as new", async () => {
+  test("given unknown notes when classified then marks them new", async () => {
     // when
     const classified = classifyDeckNotes([firstNote, secondNote], new Map());
 
@@ -457,7 +457,7 @@ describe("classifyDeckNotes", () => {
     ]);
   });
 
-  test("marks known notes as conflicts with vault path", async () => {
+  test("given known notes when classified then marks conflicts with vault path", async () => {
     // given
     const vaultNoteIndex = new Map([[2, "Note.md"]]);
 
@@ -473,7 +473,7 @@ describe("classifyDeckNotes", () => {
 });
 
 describe("resolveFieldMapping", () => {
-  test("merges preset with valid saved targets", async () => {
+  test("given valid saved targets when resolved then merges them over the preset", async () => {
     // given
     const fields = ["Front", "Back"];
 
@@ -484,7 +484,7 @@ describe("resolveFieldMapping", () => {
     expect(mapping).toEqual({ Front: "Front", Back: "Text" });
   });
 
-  test("drops saved targets outside the allowed list", async () => {
+  test("given off-list saved targets when resolved then drops them", async () => {
     // given
     const fields = ["Front"];
 
@@ -497,7 +497,7 @@ describe("resolveFieldMapping", () => {
     });
   });
 
-  test("keeps preset without saved mapping", async () => {
+  test("given no saved mapping when resolved then keeps the preset", async () => {
     // when
     const mapping = resolveFieldMapping(["Front"], undefined);
 
@@ -509,7 +509,7 @@ describe("resolveFieldMapping", () => {
 });
 
 describe("mergeFieldMappings", () => {
-  test("merges incoming mappings per model without dropping others", async () => {
+  test("given incoming mappings when merged then keeps other models intact", async () => {
     // when
     const merged = mergeFieldMappings(
       { Basic: { Front: "Front" }, Other: { A: "Skip" } },

@@ -15,7 +15,7 @@ import {
 } from "src/services/vault";
 
 describe("extractFileNoteIndex", () => {
-  test("collects block ids with file paths", async () => {
+  test("given content with a block id when extracted then collects it with the file path", async () => {
     // given
     const settings = createSettings();
     const parser = new Parser(new Regex(settings), settings);
@@ -33,7 +33,7 @@ describe("extractFileNoteIndex", () => {
     expect(vaultNoteIndex).toEqual(new Map([[1111111111111, "Note.md"]]));
   });
 
-  test("ignores content without block ids", async () => {
+  test("given content without block ids when extracted then collects nothing", async () => {
     // given
     const settings = createSettings();
     const parser = new Parser(new Regex(settings), settings);
@@ -48,7 +48,7 @@ describe("extractFileNoteIndex", () => {
 });
 
 describe("collectVaultNoteIndex", () => {
-  test("scans every markdown file in the vault", async () => {
+  test("given three vault files when scanned then collects ids from the two with cards", async () => {
     // given
     const app = App.createConfigured__({
       files: {

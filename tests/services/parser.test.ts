@@ -41,7 +41,7 @@ function htmlToPlainText(html: string): string {
 }
 
 describe("Parser - inline cards (Q :: A)", () => {
-  test("parses basic inline card with fields, deck and offsets", () => {
+  test("given a basic inline line when parsed then returns one card with fields deck and offsets", () => {
     // given
     const question = "What is 2+2?";
     const answer = "4";
@@ -65,7 +65,7 @@ describe("Parser - inline cards (Q :: A)", () => {
     expect(card.id).toBe(-1);
   });
 
-  test("parses reversed inline card (:::)", () => {
+  test("given an inline line with ::: when parsed then returns a reversed card", () => {
     // when
     const cards = generate("Capital of France ::: Paris\n");
 
@@ -75,7 +75,7 @@ describe("Parser - inline cards (Q :: A)", () => {
     expect(cards[0].modelName).toBe(basicReversedModelName);
   });
 
-  test("skips lines starting with cards-deck", () => {
+  test("given a cards-deck directive line when parsed then returns no cards", () => {
     // when
     const cards = generate("cards-deck: Foo :: Bar\n");
 
@@ -83,7 +83,7 @@ describe("Parser - inline cards (Q :: A)", () => {
     expect(cards).toHaveLength(0);
   });
 
-  test("skips lines starting with tags", () => {
+  test("given a tags directive line when parsed then returns no cards", () => {
     // when
     const cards = generate("tags: #a :: b\n");
 
@@ -91,7 +91,7 @@ describe("Parser - inline cards (Q :: A)", () => {
     expect(cards).toHaveLength(0);
   });
 
-  test("collects card tags and converts hierarchy separator", () => {
+  test("given inline card tags when parsed then converts the hierarchy separator", () => {
     // when
     const cards = generate("Q :: A #science/physics #important\n");
 
@@ -99,7 +99,7 @@ describe("Parser - inline cards (Q :: A)", () => {
     expect(cards[0].tags).toEqual(["science::physics", "important"]);
   });
 
-  test("merges global tags before card tags", () => {
+  test("given global and card tags when parsed then merges globals first", () => {
     // given
     const globalTag = "global1";
     const cardTag = "card-tag";
@@ -115,7 +115,7 @@ describe("Parser - inline cards (Q :: A)", () => {
     expect(cards[0].tags).toEqual([globalTag, cardTag]);
   });
 
-  test("reads inline block ID when inlineID enabled", () => {
+  test("given inlineID enabled when a block id follows then assigns the id and marks inserted", () => {
     // given
     const blockId = 1234567890123;
 
@@ -130,7 +130,7 @@ describe("Parser - inline cards (Q :: A)", () => {
     expect(cards[0].inserted).toBe(true);
   });
 
-  test("adds Source field when sourceSupport enabled", () => {
+  test("given sourceSupport enabled when parsed then adds the Source field", () => {
     // given
     const vault = "Vault";
     const note = "Note";
@@ -151,7 +151,7 @@ describe("Parser - inline cards (Q :: A)", () => {
     );
   });
 
-  test("parses card defined in a heading line", () => {
+  test("given a card in a heading line when parsed then returns it", () => {
     // given
     const question = "Heading question";
     const file = `# ${question} :: answer\n`;
@@ -164,7 +164,7 @@ describe("Parser - inline cards (Q :: A)", () => {
     expect(cards[0].fields["Front"]).toContain("<p>" + question + "</p>");
   });
 
-  test("parses card defined as a list item", () => {
+  test("given a card as a list item when parsed then returns it", () => {
     // given
     const question = "List question";
     const file = `- ${question} :: list answer\n`;
@@ -177,7 +177,7 @@ describe("Parser - inline cards (Q :: A)", () => {
     expect(cards[0].fields["Front"]).toContain("<p>" + question + "</p>");
   });
 
-  test("converts markdown to HTML in fields", () => {
+  test("given markdown in fields when parsed then converts it to HTML", () => {
     // given
     const boldText = "bold";
     const file = `This is **${boldText}** :: answer\n`;
@@ -191,7 +191,7 @@ describe("Parser - inline cards (Q :: A)", () => {
     );
   });
 
-  test("detects code in card content", () => {
+  test("given code in content when parsed then flags containsCode", () => {
     // when
     const cards = generate("Use `printf` here :: output\n");
 
@@ -200,7 +200,7 @@ describe("Parser - inline cards (Q :: A)", () => {
     expect(cards[0].containsCode).toBe(true);
   });
 
-  test("collects wiki image and audio links as medias", () => {
+  test("given wiki media links when parsed then collects media names", () => {
     // given
     const image = "photo.png";
     const audio = "voice.mp3";
@@ -218,7 +218,7 @@ describe("Parser - inline cards (Q :: A)", () => {
 });
 
 describe("Parser - spaced repetition cards", () => {
-  test("parses single-line spaced card", () => {
+  test("given a spaced line when parsed then returns a spaced card", () => {
     // given
     const prompt = "What is Anki?";
     const file = `${prompt} #card-spaced\n`;
@@ -233,7 +233,7 @@ describe("Parser - spaced repetition cards", () => {
     expect(cards[0].modelName).toBe(spacedModelName);
   });
 
-  test("collects additional tags on spaced card", () => {
+  test("given extra tags on a spaced line when parsed then collects them", () => {
     // when
     const cards = generate("Addition #card-spaced #math\n");
 
@@ -241,7 +241,7 @@ describe("Parser - spaced repetition cards", () => {
     expect(cards[0].tags).toEqual(["math"]);
   });
 
-  test("does not create cards from plain lines", () => {
+  test("given a plain line when parsed then returns no cards", () => {
     // when
     const cards = generate("Just an ordinary sentence.\n");
 
@@ -251,7 +251,7 @@ describe("Parser - spaced repetition cards", () => {
 });
 
 describe("Parser - cloze cards", () => {
-  test("converts ==highlight== to cloze deletion", () => {
+  test("given highlight markers when parsed then converts them to cloze deletion", () => {
     // given
     const word = "Sun";
     const line = `The ==${word}== is hot`;
@@ -267,7 +267,7 @@ describe("Parser - cloze cards", () => {
     expect(cards[0].initialContent).toBe(line);
   });
 
-  test("converts {curly} syntax to cloze deletion", () => {
+  test("given curly markers when parsed then converts them to cloze deletion", () => {
     // given
     const word = "dog";
     const file = `A {${word}} barks\n`;
@@ -279,7 +279,7 @@ describe("Parser - cloze cards", () => {
     expect(cards[0].fields["Text"]).toContain(`<p>A {{c1::${word}}} barks</p>`);
   });
 
-  test("respects explicit cloze numbering ({2:...})", () => {
+  test("given explicit cloze numbers when parsed then keeps the numbering", () => {
     // given
     const secondWord = "dog";
     const firstWord = "cat";
@@ -293,7 +293,7 @@ describe("Parser - cloze cards", () => {
     expect(cards[0].fields["Text"]).toContain(`{{c1::${firstWord}}}`);
   });
 
-  test("does not create cloze card without cloze markers", () => {
+  test("given a line without markers when parsed then returns no cloze cards", () => {
     // when
     const cards = generate("Nothing special here\n");
 
@@ -301,7 +301,7 @@ describe("Parser - cloze cards", () => {
     expect(cards).toHaveLength(0);
   });
 
-  test("shields math from cloze parsing", () => {
+  test("given math beside a cloze marker when parsed then shields the math", () => {
     // given
     const math = "E=mc^2";
     const word = "energy";
@@ -318,7 +318,7 @@ describe("Parser - cloze cards", () => {
 });
 
 describe("Parser - multiline cards with tag", () => {
-  test("parses multiline card under flashcards tag", () => {
+  test("given a multiline block when parsed then returns one card", () => {
     // given
     const question = "Two plus two";
     const answer = "Four";
@@ -336,7 +336,7 @@ describe("Parser - multiline cards with tag", () => {
     expect(cards[0].modelName).toBe(basicModelName);
   });
 
-  test("parses reversed multiline card", () => {
+  test("given a reverse tag when parsed then returns a reversed card", () => {
     // when
     const cards = generate("Capital city\n#card-reverse\nWarsaw\n");
 
@@ -346,7 +346,7 @@ describe("Parser - multiline cards with tag", () => {
     expect(cards[0].modelName).toBe(basicReversedModelName);
   });
 
-  test("inlines embedded note content into the answer", () => {
+  test("given an embedded note when parsed then inlines its content into the answer", () => {
     // given
     const embedMarker = "EMBEDCONTENTMARKER";
     const embedSrc = "embedded-note";
@@ -388,7 +388,7 @@ describe("Parser - context aware mode", () => {
   const question = "What";
   const file = `# ${topic}\n\n## ${subtopic}\n\n${question} :: Answer\n`;
 
-  test("prepends heading context to the prompt", () => {
+  test("given contextAwareMode when parsed then prepends heading context", () => {
     // when
     const cards = generate(file, { contextAwareMode: true });
     const front = htmlToPlainText(cards[0].fields["Front"]);
@@ -401,7 +401,7 @@ describe("Parser - context aware mode", () => {
     expect(front.match(/&gt;/g)).toHaveLength(2);
   });
 
-  test("omits context when contextAwareMode disabled", () => {
+  test("given disabled contextAwareMode when parsed then omits context", () => {
     // when
     const cards = generate(file);
     const front = htmlToPlainText(cards[0].fields["Front"]);
@@ -412,7 +412,7 @@ describe("Parser - context aware mode", () => {
     expect(front).not.toContain(subtopic);
   });
 
-  test("collects all heading levels from deeply nested notes", () => {
+  test("given deeply nested headings when parsed then collects every level", () => {
     // given
     const deepTopics = [
       "First",
@@ -453,7 +453,7 @@ describe("Parser - filtering and ordering", () => {
     expect(cards).toHaveLength(0);
   });
 
-  test("sorts generated cards by end offset", () => {
+  test("given two cards when parsed then sorts them by end offset", () => {
     // when
     const cards = generate("First :: one\n\nSecond :: two\n");
 
@@ -462,7 +462,7 @@ describe("Parser - filtering and ordering", () => {
     expect(cards[0].endOffset).toBeLessThan(cards[1].endOffset);
   });
 
-  test("appends default Anki tag to all cards", () => {
+  test("given a default Anki tag when parsed then appends it to all cards", () => {
     // given
     const defaultTag = "imported";
 
@@ -475,7 +475,7 @@ describe("Parser - filtering and ordering", () => {
 });
 
 describe("Parser - public helper methods", () => {
-  test("containsCode detects <code> blocks", () => {
+  test("given code and plain strings when checked then detects only code blocks", () => {
     // given
     const parser = createParser();
     const codeSnippet = "<code>x = 1</code>";
@@ -490,7 +490,7 @@ describe("Parser - public helper methods", () => {
     expect(plainDetected).toBe(false);
   });
 
-  test("getCardsToDelete returns orphan block IDs", () => {
+  test("given an orphan block id when scanned then returns it", () => {
     // given
     const parser = createParser();
     const blockId = 1234567890123;
@@ -505,7 +505,7 @@ describe("Parser - public helper methods", () => {
     ]);
   });
 
-  test("getAnkiIDsBlocks finds all block IDs", () => {
+  test("given two block ids when scanned then finds both", () => {
     // given
     const parser = createParser();
     const firstId = "1111111111111";

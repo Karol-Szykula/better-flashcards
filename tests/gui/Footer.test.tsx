@@ -26,7 +26,7 @@ function renderFooter(
 }
 
 describe("Footer", () => {
-  test("calls back on click", async () => {
+  test("given a button when clicked then calls back once", async () => {
     // given
     const user = userEvent.setup();
     const onClick = jest.fn();
@@ -39,7 +39,7 @@ describe("Footer", () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
-  test("blocks clicks on disabled buttons", async () => {
+  test("given a disabled button when clicked then blocks the callback", async () => {
     // given
     const user = userEvent.setup();
     const onClick = jest.fn();

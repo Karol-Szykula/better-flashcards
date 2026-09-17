@@ -82,7 +82,7 @@ describe("CardsService - parseGlobalTags", () => {
     "tags: #parent/child #[[My Note]] #two words\n";
   const expectedMixedTags = ["parent::child", "My-Note", "two", "words"];
 
-  test("parses a tags line", async () => {
+  test("given a tags line when parsed then returns the tags", async () => {
     // given
     const { cardsService } = setupService();
 
@@ -93,7 +93,7 @@ describe("CardsService - parseGlobalTags", () => {
     expect(tags).toEqual(expectedSimpleTags);
   });
 
-  test("converts hierarchy, links and spaces", async () => {
+  test("given hierarchy links and spaces when parsed then converts them", async () => {
     // given
     const { cardsService } = setupService();
 
@@ -104,7 +104,7 @@ describe("CardsService - parseGlobalTags", () => {
     expect(tags).toEqual(expectedMixedTags);
   });
 
-  test("returns empty tags without a tags line", async () => {
+  test("given no tags line when parsed then returns empty tags", async () => {
     // given
     const { cardsService } = setupService();
     const cardOnlyContent = "Q :: A\n";
@@ -130,7 +130,7 @@ describe("CardsService - filterByUpdate", () => {
     return card;
   }
 
-  test("creates everything when Anki has no cards", async () => {
+  test("given no Anki cards when filtered then creates everything", async () => {
     // given
     const { cardsService } = setupService();
     const card = generateInlineCard(inlineCardContent);
@@ -143,7 +143,7 @@ describe("CardsService - filterByUpdate", () => {
     expect(toUpdate).toEqual([]);
   });
 
-  test("matching card needs no work", async () => {
+  test("given a matching card when filtered then needs no work", async () => {
     // given
     const { cardsService } = setupService();
     const card = insertedCard();
@@ -159,7 +159,7 @@ describe("CardsService - filterByUpdate", () => {
     expect(toUpdate).toEqual([]);
   });
 
-  test("changed card is scheduled for update with old tags", async () => {
+  test("given a changed card when filtered then schedules update with old tags", async () => {
     // given
     const { cardsService } = setupService();
     const card = insertedCard();
@@ -176,7 +176,7 @@ describe("CardsService - filterByUpdate", () => {
     expect(card.oldTags).toEqual(previousAnkiTags);
   });
 
-  test("card missing in Anki goes back to create", async () => {
+  test("given a card missing in Anki when filtered then recreates it", async () => {
     // given
     const { cardsService } = setupService();
     const card = insertedCard();
@@ -198,7 +198,7 @@ describe("CardsService - getCardsIds", () => {
   const inlineCardContent = "Q :: A\n";
   const ankiCardIds = [7, 8];
 
-  test("collects anki card ids for inserted cards", async () => {
+  test("given inserted cards when collected then returns Anki card ids", async () => {
     // given
     const { cardsService } = setupService();
     const card = generateInlineCard(inlineCardContent);
@@ -214,7 +214,7 @@ describe("CardsService - getCardsIds", () => {
     expect(ids).toEqual(ankiCardIds);
   });
 
-  test("ignores cards not yet inserted", async () => {
+  test("given non-inserted cards when collected then ignores them", async () => {
     // given
     const { cardsService } = setupService();
     const card = generateInlineCard(inlineCardContent);
@@ -236,7 +236,7 @@ describe("CardsService - deckNeedToBeChanged", () => {
     AnkiConnectMock.setResponder(() => ({ result: cardsInfo, error: null }));
   }
 
-  test("returns false when the deck matches", async () => {
+  test("given a matching deck when checked then returns false", async () => {
     // given
     const { cardsService } = setupService();
     respondWithCardsInfo([{ deckName: currentDeckName }]);
@@ -251,7 +251,7 @@ describe("CardsService - deckNeedToBeChanged", () => {
     expect(changed).toBe(false);
   });
 
-  test("returns true when the deck differs", async () => {
+  test("given a different deck when checked then returns true", async () => {
     // given
     const { cardsService } = setupService();
     respondWithCardsInfo([{ deckName: otherDeckName }]);
@@ -266,7 +266,7 @@ describe("CardsService - deckNeedToBeChanged", () => {
     expect(changed).toBe(true);
   });
 
-  test("returns false without cardsInfo", async () => {
+  test("given no cardsInfo when checked then returns false", async () => {
     // given
     const { cardsService } = setupService();
     respondWithCardsInfo([]);
@@ -283,7 +283,7 @@ describe("CardsService - deckNeedToBeChanged", () => {
 });
 
 describe("CardsService - setup", () => {
-  test("pings Anki and creates models", async () => {
+  test("given defaults when setup runs then pings Anki and creates models", async () => {
     // given
     const { cardsService } = setupService();
     AnkiConnectMock.respondWith(null);
@@ -332,7 +332,7 @@ describe("CardsService - execute", () => {
     });
   }
 
-  test("creates a new inline card and writes its id back", async () => {
+  test("given a new inline card when executed then creates it and writes the id back", async () => {
     // given
     const { cardsService, app } = setupService({ [notePath]: cardContent });
     mockAnkiFlowResponses();
@@ -351,7 +351,7 @@ describe("CardsService - execute", () => {
     expect(written).toContain("cards-deck: Default");
   });
 
-  test("returns an error when Anki is unreachable", async () => {
+  test("given unreachable Anki when executed then returns an error", async () => {
     // given
     const { cardsService, app } = setupService({ [notePath]: cardContent });
     AnkiConnectMock.setConnectionDown(true);
@@ -363,7 +363,7 @@ describe("CardsService - execute", () => {
     expect(result).toEqual([ankiDownMessage]);
   });
 
-  test("uses the deck from frontmatter", async () => {
+  test("given a frontmatter deck when executed then uses it", async () => {
     // given
     const frontmatterContent =
       `---\ncards-deck: ${frontmatterDeckName}\n---\n${cardContent}`;
@@ -382,7 +382,7 @@ describe("CardsService - execute", () => {
     expect(createDeck?.params).toMatchObject({ deck: frontmatterDeckName });
   });
 
-  test("reports nothing to do when everything matches", async () => {
+  test("given matching cards when executed then reports nothing to do", async () => {
     // given
     const existingCardContent = `What is 2+2? :: 4\n^${noteIdInAnki}\n`;
     const generated = generateInlineCard(existingCardContent);
@@ -399,7 +399,7 @@ describe("CardsService - execute", () => {
     expect(result).toEqual([nothingToDoMessage]);
   });
 
-  test("deletes orphan block ids from Anki and the file", async () => {
+  test("given orphan block ids when executed then deletes them from Anki and the file", async () => {
     // given
     const orphanId = 1234567890123;
     const orphanContent = `Some text\n\n^${orphanId}\n`;
@@ -423,7 +423,7 @@ describe("CardsService - execute", () => {
     expect(written).not.toContain(`^${orphanId}`);
   });
 
-  test("shows a notice when a card cannot be added", async () => {
+  test("given a failing add when executed then shows a notice", async () => {
     // given
     const { cardsService, app } = setupService({ [notePath]: cardContent });
     mockAnkiFlowResponses({ addNotes: [null] });

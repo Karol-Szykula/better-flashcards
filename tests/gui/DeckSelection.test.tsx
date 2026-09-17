@@ -68,7 +68,7 @@ function renderDeckSelection(vaultNoteIndex = new Map<number, string>()) {
 }
 
 describe("DeckSelection", () => {
-  test("renders decks with imported counters", async () => {
+  test("given decks in Anki when the list renders then shows names with counters", async () => {
     // given
     respondWithDecks();
     renderDeckSelection();
@@ -84,7 +84,7 @@ describe("DeckSelection", () => {
     expect(counters).toHaveLength(2);
   });
 
-  test("disables fully imported decks with a tooltip", async () => {
+  test("given fully imported decks when the list renders then disables them with a tooltip", async () => {
     // given
     respondWithDecks();
     renderDeckSelection(
@@ -104,7 +104,7 @@ describe("DeckSelection", () => {
     expect(counters).toHaveLength(2);
   });
 
-  test("notifies about the selected deck on click", async () => {
+  test("given a deck list when a radio is clicked then notifies with the deck name", async () => {
     // given
     respondWithDecks();
     const user = userEvent.setup();
@@ -119,7 +119,7 @@ describe("DeckSelection", () => {
     expect(onSelectDeckName).toHaveBeenCalledWith("Medicine");
   });
 
-  test("shows an error when Anki is unreachable", async () => {
+  test("given unreachable Anki when the list loads then shows an error", async () => {
     // given
     AnkiConnectMock.setConnectionDown(true);
     renderDeckSelection();
@@ -131,7 +131,7 @@ describe("DeckSelection", () => {
     expect(error).toBeInTheDocument();
   });
 
-  test("marks the radio as clickable", async () => {
+  test("given a selectable deck when rendered then marks the radio as clickable", async () => {
     // given
     respondWithDecks();
     renderDeckSelection();
@@ -143,7 +143,7 @@ describe("DeckSelection", () => {
     expect(radio).toHaveClass("flashcards-import-wizard-modal__deck-radio");
   });
 
-  test("greys out empty decks without a label element", async () => {
+  test("given an empty deck when rendered then greys it out without a label element", async () => {
     // given
     respondWithDecks();
     renderDeckSelection();
@@ -162,7 +162,7 @@ describe("DeckSelection", () => {
     ).not.toBeNull();
   });
 
-  test("keeps the accessible name without label association", async () => {
+  test("given no label association when rendered then keeps the accessible name", async () => {
     // given
     respondWithDecks();
     renderDeckSelection();
@@ -174,7 +174,7 @@ describe("DeckSelection", () => {
     expect(radio).toHaveAttribute("aria-label", "Empty");
   });
 
-  test("keeps the label clickable for selectable decks", async () => {
+  test("given a selectable deck when rendered then keeps a clickable label", async () => {
     // given
     respondWithDecks();
     renderDeckSelection();
@@ -189,7 +189,7 @@ describe("DeckSelection", () => {
     );
   });
 
-  test("hides the Default deck when it has no cards", async () => {
+  test("given an empty Default deck when the list renders then hides it", async () => {
     // given
     respondWithDeckNotes({ Default: [], Languages: [11] });
     renderDeckSelection();
@@ -202,7 +202,7 @@ describe("DeckSelection", () => {
     expect(screen.queryByText("Default")).not.toBeInTheDocument();
   });
 
-  test("shows the Default deck when it has cards", async () => {
+  test("given a non-empty Default deck when the list renders then shows it", async () => {
     // given
     respondWithDeckNotes({ Default: [11], Languages: [22] });
     renderDeckSelection();

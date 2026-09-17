@@ -64,7 +64,7 @@ function createCard(): Flashcard {
 }
 
 describe("Anki - connection", () => {
-  test("ping returns true when AnkiConnect reports version 6", async () => {
+  test("given version 6 reported when pinged then returns true", async () => {
     // given
     const reportedVersion = ankiConnectVersion;
     AnkiConnectMock.respondWith(reportedVersion);
@@ -78,7 +78,7 @@ describe("Anki - connection", () => {
     expect(AnkiConnectMock.requests[0].action).toBe("version");
   });
 
-  test("ping returns false when version differs", async () => {
+  test("given a different version reported when pinged then returns false", async () => {
     // given
     const unsupportedVersion = 5;
     AnkiConnectMock.respondWith(unsupportedVersion);
@@ -90,7 +90,7 @@ describe("Anki - connection", () => {
     expect(connected).toBe(false);
   });
 
-  test("ping rejects when Anki is unreachable", async () => {
+  test("given unreachable Anki when pinged then rejects", async () => {
     // given
     AnkiConnectMock.setConnectionDown(true);
 
@@ -101,7 +101,7 @@ describe("Anki - connection", () => {
     await expect(ping).rejects.toThrow();
   });
 
-  test("invoke rejects a malformed response", async () => {
+  test("given a malformed response when invoked then rejects", async () => {
     // given
     const malformedResponse = { result: 6 };
     AnkiConnectMock.setResponder(() => malformedResponse);
@@ -113,7 +113,7 @@ describe("Anki - connection", () => {
     await expect(ping).rejects.toThrow();
   });
 
-  test("invoke rejects an error response", async () => {
+  test("given an error response when invoked then rejects with it", async () => {
     // given
     const ankiErrorResponse: Record<string, unknown> = {
       result: null,
@@ -128,7 +128,7 @@ describe("Anki - connection", () => {
     await expect(ping).rejects.toThrow("boom");
   });
 
-  test("requestPermission forwards the AnkiConnect response", async () => {
+  test("given granted permission when requested then forwards it", async () => {
     // given
     const grantedPermission = { permission: "granted" };
     AnkiConnectMock.respondWith(grantedPermission);
@@ -143,7 +143,7 @@ describe("Anki - connection", () => {
 });
 
 describe("Anki - decks and notes lookup", () => {
-  test("getDeckNames returns the deck list", async () => {
+  test("given a deck list when requested then returns it", async () => {
     // given
     const deckList = ["Default", "Languages"];
     AnkiConnectMock.respondWith(deckList);
@@ -156,7 +156,7 @@ describe("Anki - decks and notes lookup", () => {
     expect(AnkiConnectMock.requests[0]).toMatchObject({ action: "deckNames" });
   });
 
-  test("findNotes sends the query", async () => {
+  test("given a deck query when searched then sends it and returns ids", async () => {
     // given
     const deckQuery = "deck:Default";
     const foundNoteIds = [11, 22];
@@ -173,7 +173,7 @@ describe("Anki - decks and notes lookup", () => {
     });
   });
 
-  test("getCards asks notesInfo for the given ids", async () => {
+  test("given note ids when requested then asks notesInfo and returns them", async () => {
     // given
     const requestedNoteIds = [1, 2];
     const notesInfo = [{ noteId: 1 }];
@@ -190,7 +190,7 @@ describe("Anki - decks and notes lookup", () => {
     });
   });
 
-  test("cardsInfo asks cardsInfo for the given ids", async () => {
+  test("given card ids when requested then asks cardsInfo", async () => {
     // given
     const requestedCardIds = [3];
     AnkiConnectMock.respondWith([]);
@@ -205,7 +205,7 @@ describe("Anki - decks and notes lookup", () => {
     });
   });
 
-  test("deleteCards asks deleteNotes", async () => {
+  test("given note ids when deleted then asks deleteNotes", async () => {
     // given
     const deletedNoteIds = [4];
     AnkiConnectMock.respondWith(null);
@@ -220,7 +220,7 @@ describe("Anki - decks and notes lookup", () => {
     });
   });
 
-  test("createDeck sends the deck name", async () => {
+  test("given a deck name when created then sends it and returns the id", async () => {
     // given
     const newDeckName = "Languages";
     const newDeckId = 42;
@@ -237,7 +237,7 @@ describe("Anki - decks and notes lookup", () => {
     });
   });
 
-  test("changeDeck sends card ids and the deck name", async () => {
+  test("given card ids and a deck when moved then sends them and returns null", async () => {
     // given
     const movedCardIds = [5, 6];
     const targetDeck = "Languages";
@@ -264,7 +264,7 @@ describe("Anki - models", () => {
     spacedModelName,
   ];
 
-  test("createModels builds the four base models", async () => {
+  test("given no options when models created then builds four base models", async () => {
     // given
     AnkiConnectMock.respondWith(modelCreationResults);
 
@@ -285,7 +285,7 @@ describe("Anki - models", () => {
     expect(names).toEqual(expectedModelNames);
   });
 
-  test("createModels with source support adds the Source field", async () => {
+  test("given sourceSupport when models created then adds the Source field", async () => {
     // given
     AnkiConnectMock.respondWith(modelCreationResults);
 
@@ -303,7 +303,7 @@ describe("Anki - models", () => {
     expect(fields).toContain("Source");
   });
 
-  test("createModels with code highlight support doubles the models", async () => {
+  test("given codeHighlightSupport when models created then doubles the models", async () => {
     // given
     const doubledResults = new Array(8).fill(null);
     AnkiConnectMock.respondWith(doubledResults);
@@ -323,7 +323,7 @@ describe("Anki - models", () => {
 });
 
 describe("Anki - media", () => {
-  test("retrieveMediaFile sends the filename", async () => {
+  test("given a filename when retrieved then sends it and returns content", async () => {
     // given
     const mediaContent = "ZGF0YQ==";
     const mediaFilename = "image.png";
@@ -340,7 +340,7 @@ describe("Anki - media", () => {
     });
   });
 
-  test("storeMediaFiles skips the request when there is no media", async () => {
+  test("given no media when stored then skips the request", async () => {
     // when
     const stored = await new Anki().storeMediaFiles([createCard()]);
 
@@ -349,7 +349,7 @@ describe("Anki - media", () => {
     expect(AnkiConnectMock.requests).toHaveLength(0);
   });
 
-  test("storeMediaFiles stores each media file", async () => {
+  test("given card media when stored then sends one store action per file", async () => {
     // given
     const mediaFilename = "image.png";
     const mediaContent = "ZGF0YQ==";
@@ -373,7 +373,7 @@ describe("Anki - media", () => {
     ]);
   });
 
-  test("storeCodeHighlightMedias does nothing when files exist", async () => {
+  test("given existing highlight files when checked then does nothing", async () => {
     // given
     AnkiConnectMock.respondWith("file-content");
 
@@ -386,7 +386,7 @@ describe("Anki - media", () => {
     expect(AnkiConnectMock.requests[0].action).toBe("retrieveMediaFile");
   });
 
-  test("storeCodeHighlightMedias stores the three files when missing", async () => {
+  test("given missing highlight files when checked then stores the three files", async () => {
     // given
     const highlightStoreResults: unknown[] = [null, null, null];
     const expectedHighlightFiles = [
@@ -420,7 +420,7 @@ describe("Anki - media", () => {
 });
 
 describe("Anki - addCards", () => {
-  test("batch success resolves the note ids", async () => {
+  test("given a working batch when added then resolves the note ids", async () => {
     // given
     const createdNoteIds = [101, 102];
     AnkiConnectMock.respondWith(createdNoteIds);
@@ -439,7 +439,7 @@ describe("Anki - addCards", () => {
     expect(notes).toHaveLength(createdNoteIds.length);
   });
 
-  test("partial per-note errors still resolve the result array", async () => {
+  test("given per-note errors when added then still resolves the result array", async () => {
     // given
     const partialResponse: Record<string, unknown> = {
       result: [null, 102],
@@ -457,7 +457,7 @@ describe("Anki - addCards", () => {
     expect(AnkiConnectMock.requests).toHaveLength(1);
   });
 
-  test("failed batch falls back to one note at a time", async () => {
+  test("given a failed batch when added then falls back to one note at a time", async () => {
     // given
     const batchError = "batch failed";
     const singleNoteId = 777;
@@ -482,7 +482,7 @@ describe("Anki - addCards", () => {
     }
   });
 
-  test("failed single notes resolve to null", async () => {
+  test("given failing singles when added then resolves nulls", async () => {
     // given
     const alwaysFailingResponse: Record<string, unknown> = {
       result: null,
@@ -501,7 +501,7 @@ describe("Anki - addCards", () => {
 });
 
 describe("Anki - updateCards", () => {
-  test("updates fields, merges tags and moves the deck", async () => {
+  test("given changed tags when updated then updates fields merges tags and moves the deck", async () => {
     // given
     AnkiConnectMock.respondWith([null, null, null, null]);
     const card = createCard();

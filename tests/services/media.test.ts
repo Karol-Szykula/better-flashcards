@@ -45,7 +45,7 @@ function storedFile(app: App, path: string): TFile {
 }
 
 describe("deckAttachmentsFolder", () => {
-  test("nests attachments under the deck folder", async () => {
+  test("given a deck name when resolved then nests attachments under it", async () => {
     // when
     const folder = deckAttachmentsFolder("Medicine");
 
@@ -53,7 +53,7 @@ describe("deckAttachmentsFolder", () => {
     expect(folder).toBe("Medicine/attachments");
   });
 
-  test("maps deck hierarchy to nested folders", async () => {
+  test("given a deck hierarchy when resolved then maps it to nested folders", async () => {
     // when
     const folder = deckAttachmentsFolder("Medicine::Anatomy");
 
@@ -63,7 +63,7 @@ describe("deckAttachmentsFolder", () => {
 });
 
 describe("resolveMediaPath", () => {
-  test("places the first file directly in attachments", async () => {
+  test("given a free filename when resolved then places it directly in attachments", async () => {
     // given
     const takenPaths = new Set<string>();
 
@@ -74,7 +74,7 @@ describe("resolveMediaPath", () => {
     expect(targetPath).toBe("Medicine/attachments/image.png");
   });
 
-  test("suffixes colliding filenames", async () => {
+  test("given colliding filenames when resolved then suffixes them in order", async () => {
     // given
     const takenPaths = new Set<string>();
 
@@ -89,7 +89,7 @@ describe("resolveMediaPath", () => {
     expect(thirdPath).toBe("Medicine/attachments/image-2.png");
   });
 
-  test("suffixes extensionless filenames", async () => {
+  test("given an extensionless filename when resolved then suffixes its stem", async () => {
     // given
     const takenPaths = new Set<string>();
 
@@ -104,7 +104,7 @@ describe("resolveMediaPath", () => {
 });
 
 describe("decodeBase64", () => {
-  test("decodes base64 into bytes", async () => {
+  test("given base64 input when decoded then returns bytes", async () => {
     // when
     const decoded = Array.from(new Uint8Array(decodeBase64(sampleBase64)));
 
@@ -114,7 +114,7 @@ describe("decodeBase64", () => {
 });
 
 describe("importDeckMedia", () => {
-  test("retrieves files and writes them to attachments", async () => {
+  test("given media in Anki when imported then retrieves them once and writes to attachments", async () => {
     // given
     const app = App.createConfigured__({ files: {} });
     respondWithMedia({ "a.png": sampleBase64, "b.png": sampleBase64 });
@@ -141,7 +141,7 @@ describe("importDeckMedia", () => {
     expect(Array.from(new Uint8Array(stored))).toEqual(sampleBytes);
   });
 
-  test("skips files missing in Anki", async () => {
+  test("given a missing file when imported then skips it without writing", async () => {
     // given
     const app = App.createConfigured__({ files: {} });
     respondWithMedia({});
@@ -158,7 +158,7 @@ describe("importDeckMedia", () => {
     ).toBeNull();
   });
 
-  test("suffixes files colliding with existing vault files", async () => {
+  test("given an existing vault file when imported then suffixes and preserves the old file", async () => {
     // given
     const app = App.createConfigured__({
       files: { "Medicine/attachments/a.png": "old" },
@@ -178,7 +178,7 @@ describe("importDeckMedia", () => {
 });
 
 describe("rewriteMediaReferences", () => {
-  test("replaces image and sound references with wiki links", async () => {
+  test("given image and sound references when rewritten then replaces them with wiki links", async () => {
     // given
     const content =
       '<p><img src="a.png"> and <img src="a.png" alt="x"> plus [sound:b.mp3] and <img src="other.png"></p>';

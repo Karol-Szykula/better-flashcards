@@ -20,7 +20,7 @@ function renderPageIndicator(currentPage: number, connectors?: boolean) {
 }
 
 describe("PageIndicator", () => {
-  test("renders every page with numbers", async () => {
+  test("given four pages when rendered then shows numbers with labels", async () => {
     // given
     const currentPage = 1;
 
@@ -34,7 +34,7 @@ describe("PageIndicator", () => {
     }
   });
 
-  test("marks the active page", async () => {
+  test("given the second page active when rendered then marks it active", async () => {
     // given
     const currentPage = 2;
 
@@ -48,7 +48,7 @@ describe("PageIndicator", () => {
     );
   });
 
-  test("shows checkmarks for finished pages", async () => {
+  test("given two finished pages when rendered then shows two checkmarks", async () => {
     // given
     const currentPage = 3;
 
@@ -60,7 +60,7 @@ describe("PageIndicator", () => {
     expect(await screen.findByText("3")).toBeInTheDocument();
   });
 
-  test("draws connectors between pages by default", async () => {
+  test("given default options when rendered then draws connectors between pages", async () => {
     // given
     const currentPage = 1;
 
@@ -71,7 +71,7 @@ describe("PageIndicator", () => {
     expect(await screen.findAllByText("─")).toHaveLength(pageTitles.length - 1);
   });
 
-  test("hides connectors on request", async () => {
+  test("given connectors disabled when rendered then hides them", async () => {
     // given
     const currentPage = 1;
 

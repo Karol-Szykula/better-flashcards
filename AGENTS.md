@@ -8,6 +8,8 @@
 - Assign the exercised call result to a named variable in `when`.
   No `await` inside `expect(...)`.
 - One behavior per test, named as user-visible outcome.
+- Name every test `given <context> when <action> then <outcome>`,
+  mirroring the given/when/then sections in its body.
 - Mock AnkiConnect with `AnkiConnectMock` (`tests/mocks/anki-connect.ts`).
   Suite-local responder helpers stay local (rule of three: extract to
   `tests/helpers/` only on third reuse of the same contract).
