@@ -471,10 +471,12 @@ describe("Parser - public helper methods", () => {
   test("containsCode detects <code> blocks", () => {
     // given
     const parser = createParser();
+    const codeSnippet = "<code>x = 1</code>";
+    const plainSnippet = "plain text";
 
     // when
-    const codeDetected = parser.containsCode(["<code>x = 1</code>"]);
-    const plainDetected = parser.containsCode(["plain text"]);
+    const codeDetected = parser.containsCode([codeSnippet]);
+    const plainDetected = parser.containsCode([plainSnippet]);
 
     // then
     expect(codeDetected).toBe(true);
