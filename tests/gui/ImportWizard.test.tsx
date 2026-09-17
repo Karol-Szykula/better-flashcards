@@ -55,6 +55,12 @@ function renderWizard(files: Record<string, string> = {}) {
 }
 
 describe("ImportWizard - first page", () => {
+  const importedNoteFileName = "Note.md";
+  const importedNoteId = 1111111111111;
+  const importedNoteContent = `Q :: A\n^${importedNoteId}\n`;
+  const secondImportedNoteFileName = "Other.md";
+  const secondImportedNoteId = 2222222222222;
+  const secondImportedNoteContent = `Q :: B\n^${secondImportedNoteId}\n`;
   test("given a deck in Anki when the wizard opens then shows all page indicator labels", async () => {
     // given
     respondWithDeckNotes({ Languages: [1111111111111] });
@@ -75,8 +81,8 @@ describe("ImportWizard - first page", () => {
 
   test("given one of two notes already imported when the list renders then shows the 1/2 counter", async () => {
     // given
-    respondWithDeckNotes({ Languages: [1111111111111, 2222222222222] });
-    renderWizard({ "Note.md": "Q :: A\n^1111111111111\n" });
+    respondWithDeckNotes({ Languages: [importedNoteId, secondImportedNoteId] });
+    renderWizard({ [importedNoteFileName]: importedNoteContent });
 
     // when
     const counter = await screen.findByText("1/2");
@@ -108,10 +114,10 @@ describe("ImportWizard - first page", () => {
 
   test("given all notes already imported when the list renders then the deck is greyed out and disabled", async () => {
     // given
-    respondWithDeckNotes({ Languages: [1111111111111, 2222222222222] });
+    respondWithDeckNotes({ Languages: [importedNoteId, secondImportedNoteId] });
     renderWizard({
-      "Note.md": "Q :: A\n^1111111111111\n",
-      "Other.md": "Q :: B\n^2222222222222\n",
+      [importedNoteFileName]: importedNoteContent,
+      [secondImportedNoteFileName]: secondImportedNoteContent,
     });
 
     // when
