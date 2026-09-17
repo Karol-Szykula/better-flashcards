@@ -70,12 +70,19 @@ function splitDeckHierarchy(deckName: string): {
 
 async function fetchDecksWithNotes(anki: Anki): Promise<DeckWithNotes[]> {
   const deckNames = await anki.getDeckNames();
-  return Promise.all(
+  const decksWithNotes = await Promise.all(
     deckNames.map(async (deckName) => ({
       deckName,
       noteIds: await anki.findNotes(deckSearchQuery(deckName)),
     }))
   );
+  return decksWithNotes.filter(
+    ({ deckName, noteIds }) => !isEmptyDefaultDeck(deckName, noteIds)
+  );
+}
+
+function isEmptyDefaultDeck(deckName: string, noteIds: number[]): boolean {
+  return deckName === "Default" && noteIds.length === 0;
 }
 
 export function DeckSelection({

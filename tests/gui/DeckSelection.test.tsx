@@ -35,6 +35,25 @@ function respondWithDecks(noteIds: number[] = [11, 22]) {
   });
 }
 
+function respondWithDeckNotes(deckCards: Record<string, number[]>) {
+  AnkiConnectMock.setResponder((request) => {
+    switch (request.action) {
+      case "deckNames":
+        return { result: Object.keys(deckCards), error: null };
+      case "findNotes": {
+        const params = request.params as Record<string, unknown>;
+        const query = params["query"] as string;
+        const deckName = Object.keys(deckCards).find((name) =>
+          query.includes(name)
+        );
+        return { result: deckName ? deckCards[deckName] : [], error: null };
+      }
+      default:
+        return { result: null, error: null };
+    }
+  });
+}
+
 function renderDeckSelection(vaultNoteIndex = new Map<number, string>()) {
   const onSelectDeckName = jest.fn();
   render(
@@ -168,5 +187,32 @@ describe("DeckSelection", () => {
     expect(radio.closest("label")).not.toHaveClass(
       "flashcards-import-wizard-modal__labeled-control--disabled"
     );
+  });
+
+  test("hides the Default deck when it has no cards", async () => {
+    // given
+    respondWithDeckNotes({ Default: [], Languages: [11] });
+    renderDeckSelection();
+
+    // when
+    const languages = await screen.findByText("Languages");
+
+    // then
+    expect(languages).toBeInTheDocument();
+    expect(screen.queryByText("Default")).not.toBeInTheDocument();
+  });
+
+  test("shows the Default deck when it has cards", async () => {
+    // given
+    respondWithDeckNotes({ Default: [11], Languages: [22] });
+    renderDeckSelection();
+
+    // when
+    const defaultDeck = await screen.findByText("Default");
+    const counters = await screen.findAllByText("0/1");
+
+    // then
+    expect(defaultDeck).toBeInTheDocument();
+    expect(counters).toHaveLength(2);
   });
 });
