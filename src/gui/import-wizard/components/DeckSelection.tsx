@@ -1,6 +1,7 @@
 import { useEffect, useState, type JSX } from "react";
 import type { Anki } from "src/services/anki";
 import type { VaultNoteIndex } from "src/services/vault";
+import { fetchDeckNotes } from "src/services/import";
 import {
   commonWizardClasses,
   deckSelectionClasses,
@@ -12,6 +13,7 @@ import { LabeledControl, ListRow } from "src/gui/import-wizard/list/ListRow";
 export interface DeckSelectionProps {
   anki: Anki;
   className?: string;
+  lastSyncRev: number;
   onSelectDeckName: (deckName: string) => void;
   selectedDeckName: string;
   vaultNoteIndex: VaultNoteIndex;
@@ -20,6 +22,7 @@ export interface DeckSelectionProps {
 interface DeckWithNotes {
   deckName: string;
   noteIds: number[];
+  updatedCount: number | null;
 }
 
 function deckSearchQuery(deckName: string): string {
@@ -68,17 +71,52 @@ function splitDeckHierarchy(deckName: string): {
   };
 }
 
-async function fetchDecksWithNotes(anki: Anki): Promise<DeckWithNotes[]> {
+async function fetchDecksWithNotes(
+  anki: Anki,
+  vaultNoteIndex: VaultNoteIndex,
+  lastSyncRev: number
+): Promise<DeckWithNotes[]> {
   const deckNames = await anki.getDeckNames();
   const decksWithNotes = await Promise.all(
-    deckNames.map(async (deckName) => ({
-      deckName,
-      noteIds: await anki.findNotes(deckSearchQuery(deckName)),
-    }))
+    deckNames.map(async (deckName) => {
+      const noteIds = await anki.findNotes(deckSearchQuery(deckName));
+      return {
+        deckName,
+        noteIds,
+        updatedCount: await countUpdatedNotes(
+          anki,
+          deckName,
+          noteIds,
+          vaultNoteIndex,
+          lastSyncRev
+        ),
+      };
+    })
   );
   return decksWithNotes.filter(
     ({ deckName, noteIds }) => !isEmptyDefaultDeck(deckName, noteIds)
   );
+}
+
+async function countUpdatedNotes(
+  anki: Anki,
+  deckName: string,
+  noteIds: number[],
+  vaultNoteIndex: VaultNoteIndex,
+  lastSyncRev: number
+): Promise<number | null> {
+  if (countImportedNotes(noteIds, vaultNoteIndex) !== noteIds.length) {
+    return null;
+  }
+  if (isDeckEmpty(noteIds)) {
+    return null;
+  }
+  try {
+    const notes = await fetchDeckNotes(anki, deckName);
+    return notes.filter((note) => (note.mod ?? 0) > lastSyncRev).length;
+  } catch {
+    return null;
+  }
 }
 
 function isEmptyDefaultDeck(deckName: string, noteIds: number[]): boolean {
@@ -87,6 +125,7 @@ function isEmptyDefaultDeck(deckName: string, noteIds: number[]): boolean {
 
 export function DeckSelection({
   anki,
+  lastSyncRev,
   vaultNoteIndex,
   selectedDeckName,
   onSelectDeckName,
@@ -99,7 +138,11 @@ export function DeckSelection({
     let isCancelled = false;
     void (async () => {
       try {
-        const decksWithNotes = await fetchDecksWithNotes(anki);
+        const decksWithNotes = await fetchDecksWithNotes(
+          anki,
+          vaultNoteIndex,
+          lastSyncRev
+        );
         if (!isCancelled) {
           setDecks(decksWithNotes);
         }
@@ -116,7 +159,7 @@ export function DeckSelection({
     };
   };
 
-  useEffect(loadDeckList, [anki]);
+  useEffect(loadDeckList, [anki, vaultNoteIndex, lastSyncRev]);
 
   const rootClassName = mergeClasses(commonWizardClasses.pageView, className);
   const listColumns = ["Deck", "Imported"];
@@ -146,9 +189,11 @@ export function DeckSelection({
     <div className={rootClassName}>
       <p>Select a deck to import:</p>
       <List columns={listColumns} columnWidths="1fr auto" dividers="bottom">
-        {decks.map(({ deckName, noteIds }) => {
+        {decks.map(({ deckName, noteIds, updatedCount }) => {
           const importedCount = countImportedNotes(noteIds, vaultNoteIndex);
-          const isFullyImported = isDeckFullyImported(noteIds, importedCount);
+          const upToDateCount =
+            updatedCount === null ? importedCount : noteIds.length - updatedCount;
+          const isFullyImported = isDeckFullyImported(noteIds, upToDateCount);
           const isEmptyDeck = isDeckEmpty(noteIds);
           const isDisabled = isFullyImported || isEmptyDeck;
           const { depth, shortName } = splitDeckHierarchy(deckName);
@@ -178,7 +223,7 @@ export function DeckSelection({
               tooltip={tooltip}
             />,
             <span key="count">
-              {importedCount}/{noteIds.length}
+              {upToDateCount}/{noteIds.length}
             </span>,
           ];
           return (

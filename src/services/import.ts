@@ -73,13 +73,21 @@ export interface ClassifiedNote {
   vaultPath?: string;
 }
 
+export function isNoteUpdatedSince(
+  note: AnkiNoteInfo,
+  lastSyncRev: number
+): boolean {
+  return (note.mod ?? 0) > lastSyncRev;
+}
+
 export function classifyDeckNotes(
   notes: AnkiNoteInfo[],
-  vaultNoteIndex: VaultNoteIndex
+  vaultNoteIndex: VaultNoteIndex,
+  lastSyncRev = 0
 ): ClassifiedNote[] {
   return notes.map((note) => {
     const vaultPath = vaultNoteIndex.get(note.noteId);
-    if (vaultPath === undefined) {
+    if (vaultPath === undefined || isNoteUpdatedSince(note, lastSyncRev)) {
       return { note, status: "new" };
     }
     return { note, status: "conflict", vaultPath };

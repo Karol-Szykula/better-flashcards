@@ -481,6 +481,42 @@ describe("classifyDeckNotes", () => {
       { note: secondNote, status: "conflict", vaultPath: vaultFileName },
     ]);
   });
+
+  test("given a known note modified after the last sync when classified then marks it new", async () => {
+    // given
+    const modifiedNote = {
+      noteId: 2,
+      mod: 200,
+      fields: { Front: { value: "w" } },
+      tags: [] as string[],
+    };
+    const vaultNoteIndex = new Map([[2, "Note.md"]]);
+
+    // when
+    const classified = classifyDeckNotes([modifiedNote], vaultNoteIndex, 100);
+
+    // then
+    expect(classified).toEqual([{ note: modifiedNote, status: "new" }]);
+  });
+
+  test("given a known note unchanged since the last sync when classified then marks conflict", async () => {
+    // given
+    const unchangedNote = {
+      noteId: 2,
+      mod: 50,
+      fields: { Front: { value: "w" } },
+      tags: [] as string[],
+    };
+    const vaultNoteIndex = new Map([[2, "Note.md"]]);
+
+    // when
+    const classified = classifyDeckNotes([unchangedNote], vaultNoteIndex, 100);
+
+    // then
+    expect(classified).toEqual([
+      { note: unchangedNote, status: "conflict", vaultPath: "Note.md" },
+    ]);
+  });
 });
 
 describe("resolveFieldMapping", () => {

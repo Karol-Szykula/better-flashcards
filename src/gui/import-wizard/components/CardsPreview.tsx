@@ -20,6 +20,7 @@ export interface CardsPreviewProps {
   cardsSelectedToImport: Record<number, boolean>;
   className?: string;
   deckName: string;
+  lastSyncRev: number;
   onCardsSelectedToImportChange: (cardsSelectedToImport: Record<number, boolean>) => void;
   onNotesLoaded: (notes: AnkiNoteInfo[]) => void;
   vaultNoteIndex: VaultNoteIndex;
@@ -40,6 +41,7 @@ function ankiModified(mod: number | undefined): string {
 export function CardsPreview({
   anki,
   deckName,
+  lastSyncRev,
   vaultNoteIndex,
   cardsSelectedToImport,
   onCardsSelectedToImportChange,
@@ -83,8 +85,11 @@ export function CardsPreview({
   useEffect(loadPreviewNotes, [anki, deckName]);
 
   const classified = useMemo(
-    () => (rawNotes ? classifyDeckNotes(rawNotes, vaultNoteIndex) : null),
-    [rawNotes, vaultNoteIndex]
+    () =>
+      rawNotes
+        ? classifyDeckNotes(rawNotes, vaultNoteIndex, lastSyncRev)
+        : null,
+    [rawNotes, vaultNoteIndex, lastSyncRev]
   );
 
   const applyDefaultCardsSelectedToImport = () => {

@@ -54,11 +54,15 @@ function respondWithDeckNotes(deckCards: Record<string, number[]>) {
   });
 }
 
-function renderDeckSelection(vaultNoteIndex = new Map<number, string>()) {
+function renderDeckSelection(
+  vaultNoteIndex = new Map<number, string>(),
+  lastSyncRev = 0
+) {
   const onSelectDeckName = jest.fn();
   render(
     <DeckSelection
       anki={new Anki()}
+      lastSyncRev={lastSyncRev}
       onSelectDeckName={onSelectDeckName}
       selectedDeckName=""
       vaultNoteIndex={vaultNoteIndex}
@@ -105,8 +109,44 @@ describe("DeckSelection", () => {
     expect(counters).toHaveLength(2);
   });
 
-  test("given a deck list when a radio is clicked then notifies with the deck name", async () => {
+  test("given a note modified after the last sync when the list renders then keeps the deck enabled", async () => {
     // given
+    AnkiConnectMock.setResponder((request) => {
+      switch (request.action) {
+        case "deckNames":
+          return { result: ["Languages"], error: null };
+        case "findNotes":
+          return { result: [11, 22], error: null };
+        case "notesInfo":
+          return {
+            result: [
+              { noteId: 11, mod: 50, fields: {}, tags: [] },
+              { noteId: 22, mod: 200, fields: {}, tags: [] },
+            ],
+            error: null,
+          };
+        default:
+          return { result: null, error: null };
+      }
+    });
+    renderDeckSelection(
+      new Map([
+        [11, "Languages-11.md"],
+        [22, "Languages-22.md"],
+      ]),
+      100
+    );
+
+    // when
+    const radio = await screen.findByRole("radio", { name: /Languages/ });
+    const counter = await screen.findByText("1/2");
+
+    // then
+    expect(radio).toBeEnabled();
+    expect(counter).toBeInTheDocument();
+  });
+
+  test("given a deck list when a radio is clicked then notifies with the deck name", async () => {    // given
     respondWithDecks();
     const user = userEvent.setup();
     const { onSelectDeckName } = renderDeckSelection();

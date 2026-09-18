@@ -124,6 +124,7 @@ export function ImportWizard({
           <DeckSelection
             anki={anki}
             className={commonWizardClasses.pageView}
+            lastSyncRev={settings.lastSyncRev ?? 0}
             onSelectDeckName={setSelectedDeckName}
             selectedDeckName={selectedDeckName}
             vaultNoteIndex={vaultNoteIndex}
@@ -146,6 +147,7 @@ export function ImportWizard({
             className={commonWizardClasses.pageView}
             deckName={selectedDeckName}
             key={selectedDeckName}
+            lastSyncRev={settings.lastSyncRev ?? 0}
             onCardsSelectedToImportChange={setCardsSelectedToImport}
             onNotesLoaded={setDeckNotes}
             vaultNoteIndex={vaultNoteIndex}
