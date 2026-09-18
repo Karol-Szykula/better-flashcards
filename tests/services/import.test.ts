@@ -536,49 +536,28 @@ describe("mergeFieldMappings", () => {
 });
 
 describe("noteTitle", () => {
-  test("given field HTML when titled then uses normalized first field", async () => {
-    // given
-    const note = {
-      noteId: 1,
-      fields: { Front: { value: "<p>What is this?</p>" } },
-      tags: [] as string[],
-    };
-
+  test("given a plain deck when titled then combines deck and note id", async () => {
     // when
-    const title = noteTitle(note);
+    const title = noteTitle("Angielski", 1111111111111);
 
     // then
-    expect(title).toBe("What is this-");
+    expect(title).toBe("Angielski-1111111111111");
+  });
+
+  test("given a nested deck when titled then flattens deck levels", async () => {
+    // when
+    const title = noteTitle("Angielski::words::endings", 1111111111111);
+
+    // then
+    expect(title).toBe("Angielski-words-endings-1111111111111");
   });
 
   test("given illegal filename characters when titled then replaces them", async () => {
-    // given
-    const note = {
-      noteId: 2,
-      fields: { Front: { value: "<p>a/b:c</p>" } },
-      tags: [] as string[],
-    };
-
     // when
-    const title = noteTitle(note);
+    const title = noteTitle("A/B:C", 7);
 
     // then
-    expect(title).toBe("a-b-c");
-  });
-
-  test("given an empty first field when titled then falls back to the note id", async () => {
-    // given
-    const note = {
-      noteId: 3,
-      fields: { Front: { value: "" } },
-      tags: [] as string[],
-    };
-
-    // when
-    const title = noteTitle(note);
-
-    // then
-    expect(title).toBe("note-3");
+    expect(title).toBe("A-B-C-7");
   });
 });
 
@@ -632,7 +611,8 @@ describe("executeImport", () => {
     return { app, vault: app.vault as unknown as ObsidianVault };
   }
 
-  test("given selected notes when executed then creates files with ids and reports", async () => {    // given
+  test("given selected notes when executed then creates files with ids and reports", async () => {
+    // given
     const { vault } = executeWith({});
     const notes = [basicImportNote(101, 100), basicImportNote(102, 200)];
 
@@ -655,12 +635,13 @@ describe("executeImport", () => {
       lastSyncRev: 100,
     });
     const written = await vault.read(
-      vault.getAbstractFileByPath("Languages/What is 2+2-.md") as unknown as ObsidianTFile
+      vault.getAbstractFileByPath("Languages/Languages-101.md") as unknown as ObsidianTFile
     );
     expect(written).toContain("^101");
   });
 
-  test("given a missing deck folder when executed then creates the folder first", async () => {    // given
+  test("given a missing deck folder when executed then creates the folder first", async () => {
+    // given
     const { app, vault } = executeWith({});
     const createFolder = jest.spyOn(app.vault, "createFolder");
     const notes = [basicImportNote(101, 100)];
@@ -682,7 +663,7 @@ describe("executeImport", () => {
   test("given an existing file when executed then overwrites it", async () => {
     // given
     const { vault } = executeWith({
-      "Languages/What is 2+2-.md": "stale content\n\n^101\n",
+      "Languages/Languages-101.md": "stale content\n\n^101\n",
     });
     const notes = [basicImportNote(101, 100)];
 
@@ -699,13 +680,13 @@ describe("executeImport", () => {
     // then
     expect(report).toMatchObject({ created: 0, overwritten: 1 });
     const written = await vault.read(
-      vault.getAbstractFileByPath("Languages/What is 2+2-.md") as unknown as ObsidianTFile
+      vault.getAbstractFileByPath("Languages/Languages-101.md") as unknown as ObsidianTFile
     );
     expect(written).not.toContain("stale content");
     expect(written).toContain("^101");
   });
 
-  test("given duplicate titles when executed then suffixes file names", async () => {
+  test("given identical fields when executed then writes separate files per note", async () => {
     // given
     const { vault } = executeWith({});
     const notes = [basicImportNote(101, 100), basicImportNote(102, 100)];
@@ -722,14 +703,14 @@ describe("executeImport", () => {
 
     // then
     expect(
-      vault.getAbstractFileByPath("Languages/What is 2+2-.md")
+      vault.getAbstractFileByPath("Languages/Languages-101.md")
     ).not.toBeNull();
     expect(
-      vault.getAbstractFileByPath("Languages/What is 2+2--1.md")
+      vault.getAbstractFileByPath("Languages/Languages-102.md")
     ).not.toBeNull();
   });
 
-  test("given a title with dots when executed then writes an md file", async () => {
+  test("given dotted field text when executed then names the file by deck and note id", async () => {
     // given
     const { vault } = executeWith({});
     const notes = [
@@ -758,8 +739,7 @@ describe("executeImport", () => {
 
     // then
     const created = vault.getMarkdownFiles().map((file) => file.path);
-    expect(created).toHaveLength(1);
-    expect(created[0]).toMatch(/\.md$/);
+    expect(created).toEqual(["Languages/Languages-104.md"]);
   });
 
   test("given media references when executed then imports media and rewrites references", async () => {
@@ -795,7 +775,7 @@ describe("executeImport", () => {
       vault.getAbstractFileByPath("Languages/attachments/a.png")
     ).not.toBeNull();
     const written = await vault.read(
-      vault.getAbstractFileByPath("Languages/Look.md") as unknown as ObsidianTFile
+      vault.getAbstractFileByPath("Languages/Languages-103.md") as unknown as ObsidianTFile
     );
     expect(written).toContain("![[Languages/attachments/a.png]]");
   });
@@ -803,7 +783,7 @@ describe("executeImport", () => {
   test("given a foreign file at the target path when executed then suffixes instead of overwriting", async () => {
     // given
     const { vault } = executeWith({
-      "Languages/What is 2+2-.md": "someone else's notes\n",
+      "Languages/Languages-101.md": "someone else's notes\n",
     });
     const notes = [basicImportNote(101, 100)];
 
@@ -821,12 +801,12 @@ describe("executeImport", () => {
     expect(report).toMatchObject({ created: 1, overwritten: 0 });
     const untouched = await vault.read(
       vault.getAbstractFileByPath(
-        "Languages/What is 2+2-.md"
+        "Languages/Languages-101.md"
       ) as unknown as ObsidianTFile
     );
     expect(untouched).toBe("someone else's notes\n");
     expect(
-      vault.getAbstractFileByPath("Languages/What is 2+2--1.md")
+      vault.getAbstractFileByPath("Languages/Languages-101-1.md")
     ).not.toBeNull();
   });
 

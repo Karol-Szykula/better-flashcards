@@ -305,11 +305,13 @@ export async function discoverDeckModels(
   return groupNotesByModel(notes);
 }
 
-export function noteTitle(note: AnkiNoteInfo): string {
-  const firstValue = Object.values(note.fields)[0]?.value ?? "";
-  const text = normalizeCardText(firstValue);
-  const sanitized = text.replace(/[/\\:*?"<>|]/g, "-").trim();
-  return sanitized.slice(0, 100) || `note-${note.noteId}`;
+export function noteTitle(deckName: string, noteId: number): string {
+  const deckPart = deckName
+    .split("::")
+    .join("-")
+    .replace(/[/\\:*?"<>|]/g, "-")
+    .trim();
+  return `${deckPart || "note"}-${noteId}`;
 }
 
 export function deckFolder(deckName: string, targetFolder: string): string {
@@ -426,7 +428,7 @@ export async function executeImport(
     const targetPath = await resolveNoteFilePath(
       vault,
       folder,
-      noteTitle(item.note),
+      noteTitle(request.deckName, item.note.noteId),
       item.note.noteId,
       takenPaths
     );
