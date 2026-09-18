@@ -21,6 +21,7 @@ export interface CardsPreviewProps {
   className?: string;
   deckName: string;
   onCardsSelectedToImportChange: (cardsSelectedToImport: Record<number, boolean>) => void;
+  onNotesLoaded: (notes: AnkiNoteInfo[]) => void;
   vaultNoteIndex: VaultNoteIndex;
 }
 
@@ -42,6 +43,7 @@ export function CardsPreview({
   vaultNoteIndex,
   cardsSelectedToImport,
   onCardsSelectedToImportChange,
+  onNotesLoaded,
   className,
 }: CardsPreviewProps): JSX.Element {
   const rootClassName = mergeClasses(commonWizardClasses.pageView, className);
@@ -65,6 +67,7 @@ export function CardsPreview({
         });
         if (!cancelled) {
           setRawNotes(notes);
+          onNotesLoaded(notes);
         }
       } catch {
         if (!cancelled) {

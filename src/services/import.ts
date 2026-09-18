@@ -1,8 +1,12 @@
 import * as showdown from "showdown";
+import { TFile } from "obsidian";
+import type { Vault } from "obsidian";
 import { Anki } from "src/services/anki";
 import { AnkiNoteInfo } from "src/entities/card";
 import { ankiFieldNames } from "src/conf/constants";
 import type { VaultNoteIndex } from "src/services/vault";
+import { importDeckMedia, rewriteMediaReferences } from "src/services/media";
+import type { MediaPathMap } from "src/services/media";
 import {
   basicModelName,
   basicReversedModelName,
@@ -298,4 +302,174 @@ export async function discoverDeckModels(
 ): Promise<DeckModel[]> {
   const notes = await fetchDiscoverySample(anki, deckName);
   return groupNotesByModel(notes);
+}
+
+export function noteTitle(note: AnkiNoteInfo): string {
+  const firstValue = Object.values(note.fields)[0]?.value ?? "";
+  const text = normalizeCardText(firstValue);
+  const sanitized = text.replace(/[/\\:*?"<>|]/g, "-").trim();
+  return sanitized.slice(0, 100) || `note-${note.noteId}`;
+}
+
+export function deckFolder(deckName: string, targetFolder: string): string {
+  const deckPath = deckName.split("::").join("/");
+  return targetFolder ? `${targetFolder}/${deckPath}` : deckPath;
+}
+
+function splitFileStem(title: string): { stem: string; extension: string } {
+  const dotIndex = title.lastIndexOf(".");
+  const stem = dotIndex > 0 ? title.slice(0, dotIndex) : title;
+  const extension = dotIndex > 0 ? title.slice(dotIndex) : "";
+  return { stem: stem || "note", extension: extension || ".md" };
+}
+
+function joinFolder(folder: string, baseName: string): string {
+  return folder ? `${folder}/${baseName}` : baseName;
+}
+
+export async function resolveNoteFilePath(
+  vault: Vault,
+  folder: string,
+  title: string,
+  noteId: number,
+  takenPaths: Set<string>
+): Promise<string> {
+  const { stem, extension } = splitFileStem(title);
+  let candidate = joinFolder(folder, `${stem}${extension}`);
+  let suffix = 0;
+  for (;;) {
+    if (!takenPaths.has(candidate)) {
+      const existing = await vault.getAbstractFileByPath(candidate);
+      if (!existing) {
+        break;
+      }
+      if (existing instanceof TFile) {
+        const content = await vault.read(existing);
+        if (content.includes(`^${noteId}`)) {
+          break;
+        }
+      }
+    }
+    suffix += 1;
+    candidate = joinFolder(folder, `${stem}-${suffix}${extension}`);
+  }
+  takenPaths.add(candidate);
+  return candidate;
+}
+
+export interface ExecuteImportRequest {
+  decisions: Record<number, boolean>;
+  deckName: string;
+  fieldMappings: Record<string, FieldMapping>;
+  flashcardsTag: string;
+  isCancelled?: () => boolean;
+  notes: AnkiNoteInfo[];
+  onProgress?: (processed: number, total: number) => void;
+  targetFolder: string;
+}
+
+export interface ImportExecutionReport {
+  cancelled: boolean;
+  created: number;
+  lastSyncRev: number;
+  mediaFiles: number;
+  overwritten: number;
+  skipped: number;
+}
+
+export async function executeImport(
+  anki: Anki,
+  vault: Vault,
+  request: ExecuteImportRequest
+): Promise<ImportExecutionReport> {
+  const selected = request.notes.filter(
+    (note) => request.decisions[note.noteId] ?? false
+  );
+  const built = selected.map((note) => ({
+    note,
+    mapping: request.fieldMappings[note.modelName ?? "Unknown"] ?? {},
+    markdown: "",
+    media: [] as string[],
+  }));
+  for (const item of built) {
+    const result = buildNoteMarkdown(
+      item.note,
+      item.mapping,
+      request.flashcardsTag
+    );
+    item.markdown = result.markdown;
+    item.media = result.media;
+  }
+  const allMedia = [...new Set(built.flatMap((item) => item.media))];
+  const importedPaths = await importDeckMedia(
+    anki,
+    vault,
+    request.deckName,
+    allMedia
+  );
+  const folder = deckFolder(request.deckName, request.targetFolder);
+  const takenPaths = new Set<string>();
+  const report: ImportExecutionReport = {
+    created: 0,
+    overwritten: 0,
+    skipped: request.notes.length - selected.length,
+    mediaFiles: Object.keys(importedPaths).length,
+    cancelled: false,
+    lastSyncRev: 0,
+  };
+  let processed = 0;
+  for (const item of built) {
+    if (request.isCancelled?.()) {
+      report.cancelled = true;
+      break;
+    }
+    const targetPath = await resolveNoteFilePath(
+      vault,
+      folder,
+      noteTitle(item.note),
+      item.note.noteId,
+      takenPaths
+    );
+    const content = appendNoteId(
+      rebuildWithMedia(item, request, importedPaths),
+      item.note
+    );
+    const existing = await vault.getAbstractFileByPath(targetPath);
+    if (existing instanceof TFile) {
+      await vault.modify(existing, content);
+      report.overwritten += 1;
+    } else {
+      await vault.create(targetPath, content);
+      report.created += 1;
+    }
+    report.lastSyncRev = Math.max(report.lastSyncRev, item.note.mod ?? 0);
+    processed += 1;
+    request.onProgress?.(processed, built.length);
+  }
+  return report;
+}
+
+function appendNoteId(markdown: string, note: AnkiNoteInfo): string {
+  const rewritten = markdown.trim();
+  return `${rewritten}\n\n^${note.noteId}\n`;
+}
+
+function rebuildWithMedia(
+  item: { note: AnkiNoteInfo; markdown: string; media: string[] },
+  request: ExecuteImportRequest,
+  importedPaths: MediaPathMap
+): string {
+  const mapping = request.fieldMappings[item.note.modelName ?? "Unknown"] ?? {};
+  const rewrittenFields = Object.fromEntries(
+    Object.entries(item.note.fields).map(([name, field]) => [
+      name,
+      { value: rewriteMediaReferences(field.value, importedPaths) },
+    ])
+  );
+  const rebuilt = buildNoteMarkdown(
+    { ...item.note, fields: rewrittenFields },
+    mapping,
+    request.flashcardsTag
+  );
+  return rebuilt.markdown;
 }

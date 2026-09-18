@@ -4,7 +4,9 @@ import { Anki } from "src/services/anki";
 import type { ISettings } from "src/conf/settings";
 import { collectVaultNoteIndex, VaultNoteIndex } from "src/services/vault";
 import type { FieldMapping as FieldMap } from "src/services/import";
+import type { ImportExecutionReport } from "src/services/import";
 import { mergeFieldMappings } from "src/services/import";
+import type { AnkiNoteInfo } from "src/entities/card";
 import { PageIndicator } from "src/gui/import-wizard/components/PageIndicator";
 import { DeckSelection } from "src/gui/import-wizard/components/DeckSelection";
 import { FieldMapping } from "src/gui/import-wizard/components/FieldMapping";
@@ -53,6 +55,7 @@ export function ImportWizard({
     Record<string, FieldMap>
   >({});
   const [cardsSelectedToImport, setCardsSelectedToImport] = useState<Record<number, boolean>>({});
+  const [deckNotes, setDeckNotes] = useState<AnkiNoteInfo[]>([]);
 
   const loadVaultNoteIndex = () => {
     let isCancelled = false;
@@ -73,6 +76,14 @@ export function ImportWizard({
     settings.fieldMappings = mergeFieldMappings(
       settings.fieldMappings ?? {},
       fieldMappings
+    );
+    void saveSettings();
+  };
+
+  const finishImport = (report: ImportExecutionReport) => {
+    settings.lastSyncRev = Math.max(
+      settings.lastSyncRev ?? 0,
+      report.lastSyncRev
     );
     void saveSettings();
   };
@@ -136,10 +147,24 @@ export function ImportWizard({
             deckName={selectedDeckName}
             key={selectedDeckName}
             onCardsSelectedToImportChange={setCardsSelectedToImport}
+            onNotesLoaded={setDeckNotes}
             vaultNoteIndex={vaultNoteIndex}
           />
         )}
-        {currentPage === 4 && <ImportExecution />}
+        {currentPage === 4 && (
+          <ImportExecution
+            anki={anki}
+            cardsSelectedToImport={cardsSelectedToImport}
+            className={commonWizardClasses.pageView}
+            deckName={selectedDeckName}
+            fieldMappings={fieldMappings}
+            flashcardsTag={settings.flashcardsTag}
+            key={selectedDeckName}
+            notes={deckNotes}
+            onFinish={finishImport}
+            vault={vault}
+          />
+        )}
       <Footer
         leftButtons={[{ label: "Cancel", onClick: onCancel }]}
         rightButtons={rightButtons}
