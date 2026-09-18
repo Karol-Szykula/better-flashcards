@@ -660,8 +660,7 @@ describe("executeImport", () => {
     expect(written).toContain("^101");
   });
 
-  test("given a missing deck folder when executed then creates the folder first", async () => {
-    // given
+  test("given a missing deck folder when executed then creates the folder first", async () => {    // given
     const { app, vault } = executeWith({});
     const createFolder = jest.spyOn(app.vault, "createFolder");
     const notes = [basicImportNote(101, 100)];
@@ -728,6 +727,39 @@ describe("executeImport", () => {
     expect(
       vault.getAbstractFileByPath("Languages/What is 2+2--1.md")
     ).not.toBeNull();
+  });
+
+  test("given a title with dots when executed then writes an md file", async () => {
+    // given
+    const { vault } = executeWith({});
+    const notes = [
+      {
+        noteId: 104,
+        mod: 60,
+        modelName: "Basic",
+        fields: {
+          Front: { value: "<p>They caught the thief...</p>" },
+          Back: { value: "<p>thief</p>" },
+        },
+        tags: [] as string[],
+        cards: [9],
+      },
+    ];
+
+    // when
+    await executeImport(new Anki(), vault, {
+      deckName: "Languages",
+      notes,
+      decisions: { 104: true },
+      fieldMappings: { Basic: basicMapping() },
+      targetFolder: "",
+      flashcardsTag,
+    });
+
+    // then
+    const created = vault.getMarkdownFiles().map((file) => file.path);
+    expect(created).toHaveLength(1);
+    expect(created[0]).toMatch(/\.md$/);
   });
 
   test("given media references when executed then imports media and rewrites references", async () => {

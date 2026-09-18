@@ -317,11 +317,9 @@ export function deckFolder(deckName: string, targetFolder: string): string {
   return targetFolder ? `${targetFolder}/${deckPath}` : deckPath;
 }
 
-function splitFileStem(title: string): { stem: string; extension: string } {
-  const dotIndex = title.lastIndexOf(".");
-  const stem = dotIndex > 0 ? title.slice(0, dotIndex) : title;
-  const extension = dotIndex > 0 ? title.slice(dotIndex) : "";
-  return { stem: stem || "note", extension: extension || ".md" };
+function markdownFileName(title: string): { stem: string; extension: string } {
+  const stem = title.endsWith(".md") ? title.slice(0, -".md".length) : title;
+  return { stem: stem || "note", extension: ".md" };
 }
 
 function joinFolder(folder: string, baseName: string): string {
@@ -335,7 +333,7 @@ export async function resolveNoteFilePath(
   noteId: number,
   takenPaths: Set<string>
 ): Promise<string> {
-  const { stem, extension } = splitFileStem(title);
+  const { stem, extension } = markdownFileName(title);
   let candidate = joinFolder(folder, `${stem}${extension}`);
   let suffix = 0;
   for (;;) {
