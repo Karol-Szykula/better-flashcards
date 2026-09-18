@@ -45,7 +45,7 @@ export async function importDeckMedia(
 ): Promise<MediaPathMap> {
   const importedPaths: MediaPathMap = {};
   const takenPaths = new Set<string>();
-  await ensureFolderExists(vault, deckAttachmentsFolder(deckName));
+  let folderReady = false;
   for (const filename of filenames) {
     if (importedPaths[filename]) {
       continue;
@@ -53,6 +53,10 @@ export async function importDeckMedia(
     const data = await anki.retrieveMediaFile(filename);
     if (!data) {
       continue;
+    }
+    if (!folderReady) {
+      await ensureFolderExists(vault, deckAttachmentsFolder(deckName));
+      folderReady = true;
     }
     let targetPath = resolveMediaPath(deckName, filename, takenPaths);
     while (await vault.getAbstractFileByPath(targetPath)) {

@@ -158,6 +158,38 @@ describe("importDeckMedia", () => {
     ).toBeNull();
   });
 
+  test("given no media when imported then leaves the vault untouched", async () => {
+    // given
+    const app = App.createConfigured__({ files: {} });
+    const createFolder = jest.spyOn(app.vault, "createFolder");
+    respondWithMedia({ "a.png": sampleBase64 });
+
+    // when
+    const imported = await importDeckMedia(new Anki(), (app.vault as unknown as ObsidianVault), "Medicine", []);
+
+    // then
+    expect(imported).toEqual({});
+    expect(createFolder).not.toHaveBeenCalled();
+    expect(app.vault.getAbstractFileByPath("Medicine")).toBeNull();
+  });
+
+  test("given only missing files when imported then skips folder creation", async () => {
+    // given
+    const app = App.createConfigured__({ files: {} });
+    const createFolder = jest.spyOn(app.vault, "createFolder");
+    respondWithMedia({});
+
+    // when
+    const imported = await importDeckMedia(new Anki(), (app.vault as unknown as ObsidianVault), "Medicine", [
+      "gone.png",
+    ]);
+
+    // then
+    expect(imported).toEqual({});
+    expect(createFolder).not.toHaveBeenCalled();
+    expect(app.vault.getAbstractFileByPath("Medicine")).toBeNull();
+  });
+
   test("given an existing vault file when imported then suffixes and preserves the old file", async () => {
     // given
     const app = App.createConfigured__({
