@@ -5,6 +5,7 @@ import { Anki } from "src/services/anki";
 import { AnkiNoteInfo } from "src/entities/card";
 import { ankiFieldNames } from "src/conf/constants";
 import type { VaultNoteIndex } from "src/services/vault";
+import { ensureFolderExists } from "src/services/vault";
 import { importDeckMedia, rewriteMediaReferences } from "src/services/media";
 import type { MediaPathMap } from "src/services/media";
 import {
@@ -409,6 +410,7 @@ export async function executeImport(
   );
   const folder = deckFolder(request.deckName, request.targetFolder);
   const takenPaths = new Set<string>();
+  await ensureFolderExists(vault, folder);
   const report: ImportExecutionReport = {
     created: 0,
     overwritten: 0,

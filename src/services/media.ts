@@ -1,6 +1,7 @@
 import type { Vault } from "obsidian";
 import { Anki } from "src/services/anki";
 import { escapeRegExp } from "src/utils";
+import { ensureFolderExists } from "src/services/vault";
 
 export type MediaPathMap = Record<string, string>;
 
@@ -44,6 +45,7 @@ export async function importDeckMedia(
 ): Promise<MediaPathMap> {
   const importedPaths: MediaPathMap = {};
   const takenPaths = new Set<string>();
+  await ensureFolderExists(vault, deckAttachmentsFolder(deckName));
   for (const filename of filenames) {
     if (importedPaths[filename]) {
       continue;

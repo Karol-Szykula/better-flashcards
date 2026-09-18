@@ -118,4 +118,24 @@ describe("ImportExecution", () => {
       lastSyncRev: 100,
     });
   });
+
+  test("given a failing write when run then shows the error and returns to idle", async () => {
+    // given
+    AnkiConnectMock.setResponder(() => ({ result: null, error: null }));
+    const { app, onFinish } = renderExecution();
+    const failure = new Error("ENOENT: no such file or directory");
+    jest.spyOn(app.vault, "create").mockRejectedValueOnce(failure);
+    const user = userEvent.setup();
+
+    // when
+    await user.click(await screen.findByRole("button", { name: "Import" }));
+    const message = await screen.findByText(/Import failed: ENOENT/);
+
+    // then
+    expect(message).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Import" })
+    ).toBeInTheDocument();
+    expect(onFinish).not.toHaveBeenCalled();
+  });
 });

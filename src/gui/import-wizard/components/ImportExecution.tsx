@@ -41,6 +41,7 @@ export function ImportExecution({
   const [folder, setFolder] = useState("");
   const [phase, setPhase] = useState<ExecutionPhase>("idle");
   const [progress, setProgress] = useState("");
+  const [failure, setFailure] = useState("");
   const [report, setReport] = useState<ImportExecutionReport | null>(null);
   const cancelRequested = useRef(false);
 
@@ -58,22 +59,30 @@ export function ImportExecution({
 
   const runImport = async () => {
     setPhase("running");
+    setFailure("");
     cancelRequested.current = false;
-    const finished = await executeImport(anki, vault, {
-      decisions: cardsSelectedToImport,
-      deckName,
-      fieldMappings,
-      flashcardsTag,
-      isCancelled: () => cancelRequested.current,
-      notes,
-      onProgress: (processed, total) => {
-        setProgress(`Importing… ${processed}/${total}`);
-      },
-      targetFolder: folder,
-    });
-    setReport(finished);
-    setPhase("done");
-    onFinish(finished);
+    try {
+      const finished = await executeImport(anki, vault, {
+        decisions: cardsSelectedToImport,
+        deckName,
+        fieldMappings,
+        flashcardsTag,
+        isCancelled: () => cancelRequested.current,
+        notes,
+        onProgress: (processed, total) => {
+          setProgress(`Importing… ${processed}/${total}`);
+        },
+        targetFolder: folder,
+      });
+      setReport(finished);
+      setPhase("done");
+      onFinish(finished);
+    } catch (error) {
+      setFailure(
+        error instanceof Error ? error.message : "Unknown import error."
+      );
+      setPhase("idle");
+    }
   };
 
   const cancelImport = () => {
@@ -100,6 +109,7 @@ export function ImportExecution({
             ))}
           </select>
           <button onClick={() => void runImport()}>Import</button>
+          {failure && <p>Import failed: {failure}</p>}
         </>
       )}
       {phase === "running" && (

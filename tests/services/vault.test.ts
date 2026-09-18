@@ -11,6 +11,7 @@ import { Regex } from "src/conf/regex";
 import { createSettings } from "../helpers/settings";
 import {
   collectVaultNoteIndex,
+  ensureFolderExists,
   extractFileNoteIndex,
 } from "src/services/vault";
 
@@ -76,5 +77,50 @@ describe("collectVaultNoteIndex", () => {
         [nestedNoteId, nestedNoteFileName],
       ])
     );
+  });
+});
+
+describe("ensureFolderExists", () => {
+  test("given a nested path when ensured then creates every level", async () => {
+    // given
+    const app = App.createConfigured__({ files: {} });
+
+    // when
+    await ensureFolderExists(
+      app.vault as unknown as ObsidianVault,
+      "Languages/attachments"
+    );
+
+    // then
+    expect(
+      app.vault.getAbstractFileByPath("Languages/attachments")
+    ).not.toBeNull();
+  });
+
+  test("given an existing folder when ensured then keeps it without errors", async () => {
+    // given
+    const app = App.createConfigured__({
+      files: { "Languages/Note.md": "x\n" },
+    });
+
+    // when
+    await ensureFolderExists(
+      app.vault as unknown as ObsidianVault,
+      "Languages"
+    );
+
+    // then
+    expect(app.vault.getAbstractFileByPath("Languages")).not.toBeNull();
+  });
+
+  test("given an empty path when ensured then does nothing", async () => {
+    // given
+    const app = App.createConfigured__({ files: {} });
+
+    // when
+    await ensureFolderExists(app.vault as unknown as ObsidianVault, "");
+
+    // then
+    expect(app.vault.getAbstractFileByPath("")).toBeNull();
   });
 });

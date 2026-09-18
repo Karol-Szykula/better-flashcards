@@ -632,8 +632,7 @@ describe("executeImport", () => {
     return { app, vault: app.vault as unknown as ObsidianVault };
   }
 
-  test("given selected notes when executed then creates files with ids and reports", async () => {
-    // given
+  test("given selected notes when executed then creates files with ids and reports", async () => {    // given
     const { vault } = executeWith({});
     const notes = [basicImportNote(101, 100), basicImportNote(102, 200)];
 
@@ -659,6 +658,26 @@ describe("executeImport", () => {
       vault.getAbstractFileByPath("Languages/What is 2+2-.md") as unknown as ObsidianTFile
     );
     expect(written).toContain("^101");
+  });
+
+  test("given a missing deck folder when executed then creates the folder first", async () => {
+    // given
+    const { app, vault } = executeWith({});
+    const createFolder = jest.spyOn(app.vault, "createFolder");
+    const notes = [basicImportNote(101, 100)];
+
+    // when
+    await executeImport(new Anki(), vault, {
+      deckName: "Languages",
+      notes,
+      decisions: { 101: true },
+      fieldMappings: { Basic: basicMapping() },
+      targetFolder: "",
+      flashcardsTag,
+    });
+
+    // then
+    expect(createFolder).toHaveBeenCalledWith("Languages");
   });
 
   test("given an existing file when executed then overwrites it", async () => {

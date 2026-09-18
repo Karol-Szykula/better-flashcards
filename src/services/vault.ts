@@ -29,3 +29,25 @@ export async function collectVaultNoteIndex(
   }
   return vaultNoteIndex;
 }
+
+export async function ensureFolderExists(
+  vault: Vault,
+  folderPath: string
+): Promise<void> {
+  if (!folderPath) {
+    return;
+  }
+  const parts = folderPath.split("/");
+  let current = "";
+  for (const part of parts) {
+    current = current ? `${current}/${part}` : part;
+    if (await vault.getAbstractFileByPath(current)) {
+      continue;
+    }
+    try {
+      await vault.createFolder(current);
+    } catch {
+      return;
+    }
+  }
+}
