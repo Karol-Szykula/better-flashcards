@@ -45,3 +45,8 @@ move.sh
 .env
 docs/test-vault/.obsidian/themes/
 .todo
+
+# Coverage
+coverage/
+# End of Selection
+```
