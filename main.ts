@@ -1,7 +1,7 @@
 import { addIcon, Notice, Plugin, TFile } from "obsidian";
 import { ISettings } from "src/conf/settings";
 import { SettingsTab } from "src/gui/settings-tab";
-import { ImportModal } from "src/gui/import-modal";
+import { ImportModal } from "src/gui/import-wizard/import-modal";
 import { CardsService } from "src/services/cards";
 import { Anki } from "src/services/anki";
 import {
