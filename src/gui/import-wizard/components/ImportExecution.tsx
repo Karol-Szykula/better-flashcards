@@ -1,4 +1,4 @@
-import { useRef, useState, type JSX } from "react";
+import { useEffect, useRef, useState, type JSX } from "react";
 import { TFolder } from "obsidian";
 import type { Vault } from "obsidian";
 import type { Anki } from "src/services/anki";
@@ -22,6 +22,7 @@ export interface ImportExecutionProps {
   flashcardsTag: string;
   notes: AnkiNoteInfo[];
   onFinish: (report: ImportExecutionReport) => void;
+  onImportTriggerChange: (trigger: (() => void) | null) => void;
   vault: Vault;
 }
 
@@ -36,6 +37,7 @@ export function ImportExecution({
   flashcardsTag,
   notes,
   onFinish,
+  onImportTriggerChange,
   vault,
 }: ImportExecutionProps): JSX.Element {
   const [folder, setFolder] = useState("");
@@ -44,6 +46,7 @@ export function ImportExecution({
   const [failure, setFailure] = useState("");
   const [report, setReport] = useState<ImportExecutionReport | null>(null);
   const cancelRequested = useRef(false);
+  const runImportRef = useRef<() => void>(() => undefined);
 
   const folders = vault
     .getAllLoadedFiles()
@@ -85,6 +88,17 @@ export function ImportExecution({
     }
   };
 
+  runImportRef.current = () => runImport();
+
+  const registerImportTrigger = () => {
+    onImportTriggerChange(
+      phase === "idle" ? () => runImportRef.current() : null
+    );
+    return () => onImportTriggerChange(null);
+  };
+
+  useEffect(registerImportTrigger, [onImportTriggerChange, phase]);
+
   const cancelImport = () => {
     cancelRequested.current = true;
   };
@@ -108,7 +122,6 @@ export function ImportExecution({
               </option>
             ))}
           </select>
-          <button onClick={() => void runImport()}>Import</button>
           {failure && <p>Import failed: {failure}</p>}
         </>
       )}

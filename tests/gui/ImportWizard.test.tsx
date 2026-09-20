@@ -6,7 +6,7 @@
  * page indicator labels and footer button states.
  */
 import "obsidian-test-mocks/jest-setup";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "obsidian-test-mocks/obsidian";
 import type { Vault as ObsidianVault } from "obsidian";
@@ -33,6 +33,21 @@ function respondWithDeckNotes(deckCards: Record<string, number[]>) {
         );
         return { result: deckName ? deckCards[deckName] : [], error: null };
       }
+      default:
+        return { result: null, error: null };
+    }
+  });
+}
+
+function respondWithNotes(notes: Array<Record<string, unknown>>) {
+  AnkiConnectMock.setResponder((request) => {
+    switch (request.action) {
+      case "deckNames":
+        return { result: ["Languages"], error: null };
+      case "findNotes":
+        return { result: notes.map((note) => note["noteId"]), error: null };
+      case "notesInfo":
+        return { result: notes, error: null };
       default:
         return { result: null, error: null };
     }
@@ -148,5 +163,74 @@ describe("ImportWizard - first page", () => {
 
     // then
     expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("ImportWizard - last page", () => {
+  test("given deck notes when the last page is reached then shows Import in the footer instead of Next", async () => {
+    // given
+    respondWithNotes([
+      {
+        noteId: 1111111111111,
+        mod: 100,
+        modelName: "Basic",
+        fields: {
+          Front: { value: "<p>What is 2+2?</p>" },
+          Back: { value: "<p>4</p>" },
+        },
+        tags: [],
+        cards: [7],
+      },
+    ]);
+    renderWizard();
+    const user = userEvent.setup();
+
+    // when
+    await user.click(await screen.findByRole("radio", { name: /Languages/ }));
+    await user.click(await screen.findByRole("button", { name: /Next: Fields/ }));
+    await screen.findByText(/Map fields for deck/);
+    await user.click(await screen.findByRole("button", { name: /Next: Cards/ }));
+    await screen.findByText(/Cards to import: 1\/1/);
+    await user.click(await screen.findByRole("button", { name: /Next: Save/ }));
+    const importButton = await screen.findByRole("button", { name: "Import" });
+
+    // then
+    expect(importButton).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Next: Save/ })
+    ).not.toBeInTheDocument();
+  });
+
+  test("given a ready import when the footer Import is clicked then runs the import and reports to the vault", async () => {
+    // given
+    respondWithNotes([
+      {
+        noteId: 1111111111111,
+        mod: 100,
+        modelName: "Basic",
+        fields: {
+          Front: { value: "<p>What is 2+2?</p>" },
+          Back: { value: "<p>4</p>" },
+        },
+        tags: [],
+        cards: [7],
+      },
+    ]);
+    renderWizard();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("radio", { name: /Languages/ }));
+    await user.click(await screen.findByRole("button", { name: /Next: Fields/ }));
+    await screen.findByText(/Map fields for deck/);
+    await user.click(await screen.findByRole("button", { name: /Next: Cards/ }));
+    await screen.findByText(/Cards to import: 1\/1/);
+    await user.click(await screen.findByRole("button", { name: /Next: Save/ }));
+
+    // when
+    const importButton = await screen.findByRole("button", { name: "Import" });
+    await waitFor(() => expect(importButton).not.toBeDisabled());
+    await user.click(importButton);
+
+    // then
+    expect(await screen.findByText(/Created: 1/)).toBeInTheDocument();
   });
 });
