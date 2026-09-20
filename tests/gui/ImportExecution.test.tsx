@@ -1,11 +1,11 @@
 /**
  * @jest-environment jsdom
  *
- * User-perspective tests for the import execution page: folder choice,
- * run with progress and final report.
+ * User-perspective tests for the import execution page: automatic run
+ * on open with progress and final report, without any buttons.
  */
 import "obsidian-test-mocks/jest-setup";
-import { act, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { App } from "obsidian-test-mocks/obsidian";
 import type { Vault as ObsidianVault } from "obsidian";
 import { Anki } from "src/services/anki";
@@ -38,7 +38,6 @@ function renderExecution() {
   const app = App.createConfigured__({ files: {} });
   const onFinish = jest.fn();
   const settings = createSettings();
-  const onImportTriggerChange = jest.fn();
   render(
     <ImportExecution
       anki={new Anki()}
@@ -48,71 +47,25 @@ function renderExecution() {
       flashcardsTag={settings.flashcardsTag}
       notes={[basicNote(101, 100), basicNote(102, 200)]}
       onFinish={onFinish}
-      onImportTriggerChange={onImportTriggerChange}
       vault={app.vault as unknown as ObsidianVault}
     />
   );
-  const trigger = () =>
-    onImportTriggerChange.mock.calls[onImportTriggerChange.mock.calls.length - 1][
-      0
-    ];
-  return { app, onFinish, trigger };
+  return { app, onFinish };
 }
 
 describe("ImportExecution", () => {
-  test("given notes to import when opened then offers folder choice and registers the footer import trigger", async () => {
-    // given
-    const { trigger } = renderExecution();
-
-    // when
-    const folderSelect = await screen.findByRole("combobox");
-
-    // then
-    expect(folderSelect).toBeInTheDocument();
-    expect(typeof trigger()).toBe("function");
-  });
-
-  test("given vault folders when opened then lists them without the root duplicate", async () => {
-    // given
-    const app = App.createConfigured__({ files: { "Sub/Note.md": "x\n" } });
-    const onFinish = jest.fn();
-    render(
-      <ImportExecution
-        anki={new Anki()}
-        cardsSelectedToImport={{}}
-        deckName="Languages"
-        fieldMappings={{}}
-        flashcardsTag="card"
-        notes={[]}
-        onFinish={onFinish}
-        onImportTriggerChange={jest.fn()}
-        vault={app.vault as unknown as ObsidianVault}
-      />
-    );
-
-    // when
-    const options = await screen.findAllByRole("option");
-
-    // then
-    expect(options.map((option) => option.textContent)).toEqual([
-      "/",
-      "Sub",
-    ]);
-  });
-
-  test("given a run when finished then reports counts and notifies", async () => {
+  test("given notes to import when opened then runs the import and reports counts without any buttons", async () => {
     // given
     AnkiConnectMock.setResponder(() => ({ result: null, error: null }));
-    const { onFinish, trigger } = renderExecution();
+    const { onFinish } = renderExecution();
 
     // when
-    await act(async () => {
-      await trigger()?.();
-    });
     const report = await screen.findByText(/Created: 1/);
 
     // then
     expect(report).toBeInTheDocument();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
     expect(onFinish).toHaveBeenCalledTimes(1);
     const finished: ImportExecutionReport = onFinish.mock.calls[0][0];
     expect(finished).toMatchObject({
@@ -123,22 +76,18 @@ describe("ImportExecution", () => {
     });
   });
 
-  test("given a failing write when run then shows the error and re-registers the trigger", async () => {
+  test("given a failing write when opened then shows the error and notifies nothing", async () => {
     // given
     AnkiConnectMock.setResponder(() => ({ result: null, error: null }));
-    const { app, onFinish, trigger } = renderExecution();
+    const { app, onFinish } = renderExecution();
     const failure = new Error("ENOENT: no such file or directory");
     jest.spyOn(app.vault, "create").mockRejectedValueOnce(failure);
 
     // when
-    await act(async () => {
-      await trigger()?.();
-    });
     const message = await screen.findByText(/Import failed: ENOENT/);
 
     // then
     expect(message).toBeInTheDocument();
-    expect(typeof trigger()).toBe("function");
     expect(onFinish).not.toHaveBeenCalled();
   });
 });

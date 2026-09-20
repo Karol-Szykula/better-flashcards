@@ -10,8 +10,6 @@ TODO
     [ ] User packs from own decks, added as needed
     [ ] Pack = JSON, one file per pack
     [ ] UI: preset select above mapping table in step 2
-[ ] Wizard Save: remove folder picker, import always follows root/deck/notes
-[ ] Wizard Save: Import button in footer replacing Next + pre-import summary of choices
 [ ] Wizard Cards: label click toggles checkbox (details expanded via separate element)
 [ ] Wizard Cards: clear card selection on deck change (wrong counter)
 [ ] Wizard Cards: vertically align checkbox with label (CSS)

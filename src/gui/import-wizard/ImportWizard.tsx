@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from "react";
+import { useEffect, useMemo, useState, type JSX } from "react";
 import type { Vault } from "obsidian";
 import { Anki } from "src/services/anki";
 import type { ISettings } from "src/conf/settings";
@@ -58,8 +58,6 @@ export function ImportWizard({
   const [deckNotes, setDeckNotes] = useState<AnkiNoteInfo[]>([]);
   const [cardsPreviewPage, setCardsPreviewPage] = useState(0);
   const [cardsPreviewTotalPages, setCardsPreviewTotalPages] = useState(1);
-  const [isImportReady, setIsImportReady] = useState(false);
-  const importTriggerRef = useRef<(() => void) | null>(null);
 
   const loadVaultNoteIndex = () => {
     let isCancelled = false;
@@ -99,11 +97,6 @@ export function ImportWizard({
     void saveSettings();
   };
 
-  const handleImportTriggerChange = useCallback((trigger: (() => void) | null) => {
-    importTriggerRef.current = trigger;
-    setIsImportReady(trigger !== null);
-  }, []);
-
   const goToNextPage = () => {
     if (currentPage === 2) {
       persistFieldMappings();
@@ -138,24 +131,30 @@ export function ImportWizard({
   );
 
   const rightButtons = [];
-  if (currentPage > 1) {
+  if (currentPage === 2 || currentPage === 3) {
     rightButtons.push({
       label: "← Back",
       onClick: () => setCurrentPage(currentPage - 1),
     });
   }
-  if (currentPage < 4) {
+  if (currentPage < 3) {
     rightButtons.push({
       label: `Next: ${pageTitles[currentPage]} →`,
       disabled: !canAdvance,
       onClick: goToNextPage,
     });
   }
-  if (currentPage === 4) {
+  if (currentPage === 3) {
     rightButtons.push({
       label: "Import",
-      disabled: !isImportReady,
-      onClick: () => importTriggerRef.current?.(),
+      disabled: !canAdvance,
+      onClick: goToNextPage,
+    });
+  }
+  if (currentPage === 4) {
+    rightButtons.push({
+      label: "OK",
+      onClick: onCancel,
     });
   }
 
@@ -210,12 +209,13 @@ export function ImportWizard({
             key={selectedDeckName}
             notes={deckNotes}
             onFinish={finishImport}
-            onImportTriggerChange={handleImportTriggerChange}
             vault={vault}
           />
         )}
       <Footer
-        leftButtons={[{ label: "Cancel", onClick: onCancel }]}
+        leftButtons={
+          currentPage === 4 ? [] : [{ label: "Cancel", onClick: onCancel }]
+        }
         pagination={
           currentPage === 3
             ? {

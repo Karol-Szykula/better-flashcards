@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, type JSX } from "react";
-import { TFolder } from "obsidian";
 import type { Vault } from "obsidian";
 import type { Anki } from "src/services/anki";
 import type { AnkiNoteInfo } from "src/entities/card";
@@ -22,11 +21,10 @@ export interface ImportExecutionProps {
   flashcardsTag: string;
   notes: AnkiNoteInfo[];
   onFinish: (report: ImportExecutionReport) => void;
-  onImportTriggerChange: (trigger: (() => void) | null) => void;
   vault: Vault;
 }
 
-type ExecutionPhase = "idle" | "running" | "done";
+type ExecutionPhase = "running" | "done" | "failed";
 
 export function ImportExecution({
   anki,
@@ -37,45 +35,28 @@ export function ImportExecution({
   flashcardsTag,
   notes,
   onFinish,
-  onImportTriggerChange,
   vault,
 }: ImportExecutionProps): JSX.Element {
-  const [folder, setFolder] = useState("");
-  const [phase, setPhase] = useState<ExecutionPhase>("idle");
+  const [phase, setPhase] = useState<ExecutionPhase>("running");
   const [progress, setProgress] = useState("");
   const [failure, setFailure] = useState("");
   const [report, setReport] = useState<ImportExecutionReport | null>(null);
-  const cancelRequested = useRef(false);
-  const runImportRef = useRef<() => void>(() => undefined);
-
-  const folders = vault
-    .getAllLoadedFiles()
-    .filter(
-      (file): file is TFolder =>
-        file instanceof TFolder && file.path !== "/" && file.path !== ""
-    )
-    .map((foundFolder) => foundFolder.path);
-
-  const selectedCount = notes.filter(
-    (note) => cardsSelectedToImport[note.noteId] ?? false
-  ).length;
+  const importStarted = useRef(false);
 
   const runImport = async () => {
     setPhase("running");
     setFailure("");
-    cancelRequested.current = false;
     try {
       const finished = await executeImport(anki, vault, {
         decisions: cardsSelectedToImport,
         deckName,
         fieldMappings,
         flashcardsTag,
-        isCancelled: () => cancelRequested.current,
         notes,
         onProgress: (processed, total) => {
           setProgress(`Importing… ${processed}/${total}`);
         },
-        targetFolder: folder,
+        targetFolder: "",
       });
       setReport(finished);
       setPhase("done");
@@ -84,62 +65,30 @@ export function ImportExecution({
       setFailure(
         error instanceof Error ? error.message : "Unknown import error."
       );
-      setPhase("idle");
+      setPhase("failed");
     }
   };
 
-  runImportRef.current = () => runImport();
-
-  const registerImportTrigger = () => {
-    onImportTriggerChange(
-      phase === "idle" ? () => runImportRef.current() : null
-    );
-    return () => onImportTriggerChange(null);
+  const startImportOnce = () => {
+    if (importStarted.current) {
+      return;
+    }
+    importStarted.current = true;
+    void runImport();
   };
 
-  useEffect(registerImportTrigger, [onImportTriggerChange, phase]);
-
-  const cancelImport = () => {
-    cancelRequested.current = true;
-  };
+  useEffect(startImportOnce, []);
 
   return (
     <div className={mergeClasses(commonWizardClasses.pageView, className)}>
-      {phase === "idle" && (
-        <>
-          <p>
-            Import {selectedCount} selected cards from &quot;{deckName}&quot;
-            into:
-          </p>
-          <select
-            onChange={(event) => setFolder(event.target.value)}
-            value={folder}
-          >
-            <option value="">/</option>
-            {folders.map((path) => (
-              <option key={path} value={path}>
-                {path}
-              </option>
-            ))}
-          </select>
-          {failure && <p>Import failed: {failure}</p>}
-        </>
-      )}
-      {phase === "running" && (
-        <>
-          <p>{progress || "Importing…"}</p>
-          <button onClick={cancelImport}>Cancel import</button>
-        </>
-      )}
+      {phase === "running" && <p>{progress || "Importing…"}</p>}
+      {phase === "failed" && <p>Import failed: {failure}</p>}
       {phase === "done" && report && (
-        <>
-          <p>
-            Created: {report.created}, overwritten: {report.overwritten},
-            skipped: {report.skipped}, media files: {report.mediaFiles}
-            {report.cancelled ? " (cancelled)" : ""}.
-          </p>
-          <button onClick={() => setPhase("idle")}>Import again</button>
-        </>
+        <p>
+          Created: {report.created}, overwritten: {report.overwritten},
+          skipped: {report.skipped}, media files: {report.mediaFiles}
+          {report.cancelled ? " (cancelled)" : ""}.
+        </p>
       )}
     </div>
   );
