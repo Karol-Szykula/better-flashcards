@@ -68,30 +68,11 @@ export function createFlashcardFormHandler(
     el: HTMLElement,
     ctx: MarkdownPostProcessorContext
   ): Promise<void> {
-    let parsed: FlashcardFormData;
-    try {
-      parsed = parseFlashcardForm(source, yaml);
-    } catch {
-      renderFormError(el);
+    const parsed = parseFormSource(source, el, yaml);
+    if (!parsed) {
       return;
     }
-    let savedSource = source;
-    function handleEdit(edit: FlashcardFormEdit): void {
-      const expectedSource = savedSource;
-      const merged = { ...parsed, ...edit };
-      void saveFlashcardFormEdit(
-        vault,
-        ctx,
-        el,
-        expectedSource,
-        merged,
-        yaml
-      ).then((next) => {
-        if (next !== null) {
-          savedSource = next;
-        }
-      });
-    }
+    const handleEdit = createEditHandler(vault, ctx, el, parsed, yaml, source);
     ctx.addChild(
       new FlashcardFormChild(
         el,
@@ -100,4 +81,45 @@ export function createFlashcardFormHandler(
     );
   }
   return handleFlashcardForm;
+}
+
+function parseFormSource(
+  source: string,
+  el: HTMLElement,
+  yaml: YamlEngine
+): FlashcardFormData | null {
+  try {
+    return parseFlashcardForm(source, yaml);
+  } catch {
+    renderFormError(el);
+    return null;
+  }
+}
+
+function createEditHandler(
+  vault: Vault,
+  ctx: MarkdownPostProcessorContext,
+  el: HTMLElement,
+  parsed: FlashcardFormData,
+  yaml: YamlEngine,
+  initialSource: string
+): (edit: FlashcardFormEdit) => void {
+  let savedSource = initialSource;
+  function handleEdit(edit: FlashcardFormEdit): void {
+    const expectedSource = savedSource;
+    const merged = { ...parsed, ...edit };
+    void saveFlashcardFormEdit(
+      vault,
+      ctx,
+      el,
+      expectedSource,
+      merged,
+      yaml
+    ).then((next) => {
+      if (next !== null) {
+        savedSource = next;
+      }
+    });
+  }
+  return handleEdit;
 }
