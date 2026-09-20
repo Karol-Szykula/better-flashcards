@@ -1,0 +1,26 @@
+TODO (project v0.3.0)
+=========================
+
+- Per-action AnkiConnect params types (with import work)
+- notesInfo chunking by 100 (red test existed, recreate with import)
+- Import wizard steps 3-4 (preview + diff, save + progress + report)
+- Strict mode in tsconfig (consider)
+- Incremental vault index (when full scan hurts)
+- Model packs: pack carries model + field mapping, nothing more until needed
+  - Built-in packs shipped with plugin
+  - User packs from own decks, added as needed
+  - Pack = JSON, one file per pack
+  - UI: preset select above mapping table in step 2
+- Wizard Save: remove folder picker, import always follows root/deck/notes
+- Wizard Save: Import button in footer replacing Next + pre-import summary of choices
+- Wizard Cards: label click toggles checkbox (details expanded via separate element)
+- Wizard Cards: clear card selection on deck change (wrong counter)
+- Wizard Cards: vertically align checkbox with label (CSS)
+- Lists: sticky column headers + pagination pinned to container bottom (Cards; check Fields)
+- ImportWizard: extract syncState useMemo into named buildNoteSyncState
+- GUI tests: Save without folder, label↔checkbox, selection reset, report/error; manual: sticky/pagination in test-vault
+- Wizard integration tests: XState model (xstate/graph) + Mermaid diagram in docs
+- Integration tests: end-to-end happy path + data.json
+- Integration tests: reimport after card edit (no media duplicates)
+- Integration tests: Cancel/error on Save, Anki down on every page
+- Integration tests: model simple paths (getSimplePaths) as regression pack
