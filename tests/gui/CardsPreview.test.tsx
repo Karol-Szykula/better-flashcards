@@ -50,14 +50,20 @@ function respondWithPreviewNotes() {
 function renderPreview() {
   const onCardsSelectedToImportChange = jest.fn();
   const onNotesLoaded = jest.fn();
+  const onPageChange = jest.fn();
+  const onTotalPagesChange = jest.fn();
   render(
     <CardsPreview
       anki={new Anki()}
       cardsSelectedToImport={{}}
+      currentPage={0}
       deckName="Languages"
       onCardsSelectedToImportChange={onCardsSelectedToImportChange}
       onNotesLoaded={onNotesLoaded}
+      onPageChange={onPageChange}
+      onTotalPagesChange={onTotalPagesChange}
       syncState={{ fallbackRev: 0, syncedMods: { 101: 100, 102: 100 } }}
+      totalPages={1}
       vaultNoteIndex={
         new Map([
           [101, "Languages-101.md"],
@@ -66,7 +72,7 @@ function renderPreview() {
       }
     />
   );
-  return { onCardsSelectedToImportChange };
+  return { onCardsSelectedToImportChange, onPageChange, onTotalPagesChange };
 }
 
 describe("CardsPreview", () => {

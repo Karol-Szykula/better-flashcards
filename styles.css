@@ -135,6 +135,17 @@
   gap:     var(--flashcards-import-wizard-modal__footer-gap);
 }
 
+.flashcards-import-wizard-modal__footer-center {
+  display: flex;
+  align-items: center;
+  gap:     var(--flashcards-import-wizard-modal__footer-gap);
+}
+
+.flashcards-import-wizard-modal__footer-page-indicator {
+  font-size: var(--flashcards-import-wizard-modal__page-indicator-font-size);
+  color:     var(--flashcards-import-wizard-modal__page-muted-text);
+}
+
 .flashcards-import-wizard-modal__deck-row {
   padding: var(--flashcards-import-wizard-modal__row-padding);
 }

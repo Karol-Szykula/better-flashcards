@@ -24,6 +24,8 @@ export const pageIndicatorClasses = {
 export const footerClasses = {
   footer: "flashcards-import-wizard-modal__footer",
   footerRight: "flashcards-import-wizard-modal__footer-right",
+  footerCenter: "flashcards-import-wizard-modal__footer-center",
+  pageIndicator: "flashcards-import-wizard-modal__footer-page-indicator",
 } as const;
 
 export const deckSelectionClasses = {

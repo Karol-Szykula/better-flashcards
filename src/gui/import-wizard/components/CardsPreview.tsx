@@ -24,10 +24,14 @@ export interface CardsPreviewProps {
   anki: Anki;
   cardsSelectedToImport: Record<number, boolean>;
   className?: string;
+  currentPage: number;
   deckName: string;
   onCardsSelectedToImportChange: (cardsSelectedToImport: Record<number, boolean>) => void;
   onNotesLoaded: (notes: AnkiNoteInfo[]) => void;
+  onPageChange: (page: number) => void;
+  onTotalPagesChange: (totalPages: number) => void;
   syncState: NoteSyncState;
+  totalPages: number;
   vaultNoteIndex: VaultNoteIndex;
 }
 
@@ -65,7 +69,10 @@ function previewBadgeText(item: ClassifiedNote): string {
 
 export function CardsPreview({
   anki,
+  currentPage,
   deckName,
+  onPageChange,
+  onTotalPagesChange,
   syncState,
   vaultNoteIndex,
   cardsSelectedToImport,
@@ -77,8 +84,9 @@ export function CardsPreview({
   const [rawNotes, setRawNotes] = useState<AnkiNoteInfo[] | null>(null);
   const [progress, setProgress] = useState("");
   const [loadError, setLoadError] = useState("");
-  const [page, setPage] = useState(0);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const page = currentPage;
+  const setPage = onPageChange;
 
   const loadPreviewNotes = () => {
     let cancelled = false;
@@ -134,6 +142,13 @@ export function CardsPreview({
 
   useEffect(applyDefaultCardsSelectedToImport, [classified, cardsSelectedToImport, onCardsSelectedToImportChange]);
 
+  useEffect(() => {
+    if (classified) {
+      const pageCount = Math.max(1, Math.ceil(classified.length / previewPageSize));
+      onTotalPagesChange(pageCount);
+    }
+  }, [classified, onTotalPagesChange]);
+
   if (loadError) {
     return (
       <div className={rootClassName}>
@@ -149,7 +164,6 @@ export function CardsPreview({
     );
   }
   const cardsSelectedToImportCount = Object.values(cardsSelectedToImport).filter(Boolean).length;
-  const pageCount = Math.max(1, Math.ceil(classified.length / previewPageSize));
   const pageNotes = classified.slice(
     page * previewPageSize,
     page * previewPageSize + previewPageSize
@@ -219,17 +233,6 @@ export function CardsPreview({
           ))}
         </div>
       )}
-      <div className={cardsPreviewClasses.previewPagination}>
-        <span>
-          Page {page + 1}/{pageCount}
-        </span>
-        {page > 0 && (
-          <button onClick={() => setPage(page - 1)}>← Prev</button>
-        )}
-        {page < pageCount - 1 && (
-          <button onClick={() => setPage(page + 1)}>Next →</button>
-        )}
-      </div>
     </div>
   );
 }

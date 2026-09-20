@@ -56,6 +56,8 @@ export function ImportWizard({
   >({});
   const [cardsSelectedToImport, setCardsSelectedToImport] = useState<Record<number, boolean>>({});
   const [deckNotes, setDeckNotes] = useState<AnkiNoteInfo[]>([]);
+  const [cardsPreviewPage, setCardsPreviewPage] = useState(0);
+  const [cardsPreviewTotalPages, setCardsPreviewTotalPages] = useState(1);
 
   const loadVaultNoteIndex = () => {
     let isCancelled = false;
@@ -99,7 +101,19 @@ export function ImportWizard({
     if (currentPage === 2) {
       persistFieldMappings();
     }
+    if (currentPage === 3) {
+      setCardsPreviewPage(0);
+      setCardsPreviewTotalPages(1);
+    }
     setCurrentPage(currentPage + 1);
+  };
+
+  const handleCardsPreviewPageChange = (page: number) => {
+    setCardsPreviewPage(page);
+  };
+
+  const handleCardsPreviewTotalPagesChange = (totalPages: number) => {
+    setCardsPreviewTotalPages(totalPages);
   };
 
   const cardsSelectedToImportCount = Object.values(cardsSelectedToImport).filter(Boolean).length;
@@ -159,11 +173,15 @@ export function ImportWizard({
             anki={anki}
             cardsSelectedToImport={cardsSelectedToImport}
             className={commonWizardClasses.pageView}
+            currentPage={cardsPreviewPage}
             deckName={selectedDeckName}
             key={selectedDeckName}
             onCardsSelectedToImportChange={setCardsSelectedToImport}
             onNotesLoaded={setDeckNotes}
+            onPageChange={handleCardsPreviewPageChange}
+            onTotalPagesChange={handleCardsPreviewTotalPagesChange}
             syncState={syncState}
+            totalPages={cardsPreviewTotalPages}
             vaultNoteIndex={vaultNoteIndex}
           />
         )}
@@ -183,6 +201,15 @@ export function ImportWizard({
         )}
       <Footer
         leftButtons={[{ label: "Cancel", onClick: onCancel }]}
+        pagination={
+          currentPage === 3
+            ? {
+                currentPage: cardsPreviewPage,
+                totalPages: cardsPreviewTotalPages,
+                onPageChange: handleCardsPreviewPageChange,
+              }
+            : undefined
+        }
         rightButtons={rightButtons}
       />
     </div>
