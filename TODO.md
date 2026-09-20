@@ -1,4 +1,4 @@
-# TODO
+ TODO
 
 - [ ] Per-action AnkiConnect params types (with import work)
 - [ ] notesInfo chunking by 100: add test (code exists)
@@ -19,7 +19,7 @@
 - [ ] Integration tests: Cancel/error on Save, Anki down on every page
 - [ ] Integration tests: model simple paths (getSimplePaths) as regression pack
 - [ ] Sync: file hash per note + diverged state (detect Obsidian-side edits)
-- [ ] F1: flashcard-form code-block processor (editable front/back, readonly tags/id)
+- [ ] Import to the F1 form
 - [ ] Bundle size: fix 5MB main.js
   - [ ] Remove inline sourcemap (sourcemap: true or false for production)
   - [ ] Move base64 constants (highlightjs, highlightCss, flashcardsIcon) to npm deps / runtime assets

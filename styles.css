@@ -33,6 +33,12 @@
 
   --flashcards-import-wizard-modal__preview-pagination-gap:        0.5rem;
   --flashcards-import-wizard-modal__preview-pagination-margin-top: 0.5rem;
+
+  --flashcard-form-gap:           0.5rem;
+  --flashcard-form-field-gap:     0.25rem;
+  --flashcard-form-input-padding: 0.375rem 0.5rem;
+  --flashcard-form-input-radius:  0.375rem;
+  --flashcard-form-label-font-size: 0.85em;
 }
 
 .modal:has(> .modal-content > .flashcards-import-wizard-modal) {
@@ -279,4 +285,37 @@
 
 .flashcards-import-wizard-modal__list--striped > *:nth-child(even) {
   background: var(--flashcards-import-wizard-modal__list-stripe-background);
+}
+
+.flashcard-form {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--flashcard-form-gap);
+}
+
+.flashcard-form__field {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--flashcard-form-field-gap);
+}
+
+.flashcard-form__label {
+  color:     var(--text-muted);
+  font-size: var(--flashcard-form-label-font-size);
+}
+
+.flashcard-form__input {
+  box-sizing:    border-box;
+  width:         100%;
+  padding:       var(--flashcard-form-input-padding);
+  border-radius: var(--flashcard-form-input-radius);
+}
+
+.flashcard-form__input--readonly {
+  color:      var(--text-muted);
+  background: var(--background-secondary);
+}
+
+.flashcard-form__error {
+  color: var(--text-error);
 }

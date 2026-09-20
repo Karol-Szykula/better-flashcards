@@ -4,7 +4,14 @@ import { SettingsTab } from "src/gui/settings-tab";
 import { ImportModal } from "src/gui/import-modal";
 import { CardsService } from "src/services/cards";
 import { Anki } from "src/services/anki";
-import { noticeTimeout, flashcardsIcon } from "src/conf/constants";
+import {
+  flashcardsIcon,
+  flashcardFormLanguage,
+  noticeTimeout,
+} from "src/conf/constants";
+import { createFlashcardFormHandler } from "src/gui/flashcard-form/processor";
+import { registerFlashcardFormAutoPreview } from "src/gui/flashcard-form/auto-preview";
+import { registerFlashcardFormCommands } from "src/gui/flashcard-form/commands";
 
 export default class ObsidianFlashcard extends Plugin {
   settings!: ISettings;
@@ -56,6 +63,13 @@ export default class ObsidianFlashcard extends Plugin {
       },
     });
 
+    this.registerMarkdownCodeBlockProcessor(
+      flashcardFormLanguage,
+      createFlashcardFormHandler(this.app.vault)
+    );
+    registerFlashcardFormCommands(this);
+    registerFlashcardFormAutoPreview(this);
+
     this.addRibbonIcon("flashcards", "Generate flashcards", () => {
       const activeFile = this.app.workspace.getActiveFile();
       if (activeFile) {
@@ -100,6 +114,7 @@ export default class ObsidianFlashcard extends Plugin {
       ignoredDirectories: "",
       lastSyncRev: 0,
       fieldMappings: {},
+      syncedNoteHashes: {},
       syncedNoteMods: {},
     };
   }
