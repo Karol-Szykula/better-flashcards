@@ -467,7 +467,7 @@ describe("classifyDeckNotes", () => {
     ]);
   });
 
-  test("given known notes when classified then marks conflicts with vault path", async () => {
+  test("given known notes when classified then marks them imported with vault path", async () => {
     // given
     const vaultFileName = "Note.md";
     const vaultNoteIndex = new Map([[2, vaultFileName]]);
@@ -478,11 +478,11 @@ describe("classifyDeckNotes", () => {
     // then
     expect(classified).toEqual([
       { note: firstNote, status: "new" },
-      { note: secondNote, status: "conflict", vaultPath: vaultFileName },
+      { note: secondNote, status: "imported", vaultPath: vaultFileName },
     ]);
   });
 
-  test("given a known note modified after the last sync when classified then marks it new", async () => {
+  test("given a known note modified after its sync when classified then marks it updated", async () => {
     // given
     const modifiedNote = {
       noteId: 2,
@@ -491,15 +491,18 @@ describe("classifyDeckNotes", () => {
       tags: [] as string[],
     };
     const vaultNoteIndex = new Map([[2, "Note.md"]]);
+    const sync = { fallbackRev: 0, syncedMods: { 2: 100 } };
 
     // when
-    const classified = classifyDeckNotes([modifiedNote], vaultNoteIndex, 100);
+    const classified = classifyDeckNotes([modifiedNote], vaultNoteIndex, sync);
 
     // then
-    expect(classified).toEqual([{ note: modifiedNote, status: "new" }]);
+    expect(classified).toEqual([
+      { note: modifiedNote, status: "updated", vaultPath: "Note.md" },
+    ]);
   });
 
-  test("given a known note unchanged since the last sync when classified then marks conflict", async () => {
+  test("given a known note unchanged since its sync when classified then marks imported", async () => {
     // given
     const unchangedNote = {
       noteId: 2,
@@ -508,13 +511,34 @@ describe("classifyDeckNotes", () => {
       tags: [] as string[],
     };
     const vaultNoteIndex = new Map([[2, "Note.md"]]);
+    const sync = { fallbackRev: 0, syncedMods: { 2: 100 } };
 
     // when
-    const classified = classifyDeckNotes([unchangedNote], vaultNoteIndex, 100);
+    const classified = classifyDeckNotes([unchangedNote], vaultNoteIndex, sync);
 
     // then
     expect(classified).toEqual([
-      { note: unchangedNote, status: "conflict", vaultPath: "Note.md" },
+      { note: unchangedNote, status: "imported", vaultPath: "Note.md" },
+    ]);
+  });
+
+  test("given a known note without per-note sync when classified then falls back to the global rev", async () => {
+    // given
+    const legacyNote = {
+      noteId: 2,
+      mod: 200,
+      fields: { Front: { value: "w" } },
+      tags: [] as string[],
+    };
+    const vaultNoteIndex = new Map([[2, "Note.md"]]);
+    const sync = { fallbackRev: 300, syncedMods: {} };
+
+    // when
+    const classified = classifyDeckNotes([legacyNote], vaultNoteIndex, sync);
+
+    // then
+    expect(classified).toEqual([
+      { note: legacyNote, status: "imported", vaultPath: "Note.md" },
     ]);
   });
 });
@@ -668,7 +692,7 @@ describe("executeImport", () => {
       overwritten: 0,
       skipped: 1,
       cancelled: false,
-      lastSyncRev: 100,
+      syncedNotes: { 101: 100 },
     });
     const written = await vault.read(
       vault.getAbstractFileByPath("Languages/Languages-101.md") as unknown as ObsidianTFile

@@ -56,15 +56,15 @@ function respondWithDeckNotes(deckCards: Record<string, number[]>) {
 
 function renderDeckSelection(
   vaultNoteIndex = new Map<number, string>(),
-  lastSyncRev = 0
+  syncState = { fallbackRev: 0, syncedMods: {} }
 ) {
   const onSelectDeckName = jest.fn();
   render(
     <DeckSelection
       anki={new Anki()}
-      lastSyncRev={lastSyncRev}
       onSelectDeckName={onSelectDeckName}
       selectedDeckName=""
+      syncState={syncState}
       vaultNoteIndex={vaultNoteIndex}
     />
   );
@@ -134,7 +134,44 @@ describe("DeckSelection", () => {
         [11, "Languages-11.md"],
         [22, "Languages-22.md"],
       ]),
-      100
+      { fallbackRev: 100, syncedMods: {} }
+    );
+
+    // when
+    const radio = await screen.findByRole("radio", { name: /Languages/ });
+    const counter = await screen.findByText("1/2");
+
+    // then
+    expect(radio).toBeEnabled();
+    expect(counter).toBeInTheDocument();
+  });
+
+  test("given a per-note sync older than the global rev when the list renders then prefers the per-note rev", async () => {
+    // given
+    AnkiConnectMock.setResponder((request) => {
+      switch (request.action) {
+        case "deckNames":
+          return { result: ["Languages"], error: null };
+        case "findNotes":
+          return { result: [11, 22], error: null };
+        case "notesInfo":
+          return {
+            result: [
+              { noteId: 11, mod: 50, fields: {}, tags: [] },
+              { noteId: 22, mod: 200, fields: {}, tags: [] },
+            ],
+            error: null,
+          };
+        default:
+          return { result: null, error: null };
+      }
+    });
+    renderDeckSelection(
+      new Map([
+        [11, "Languages-11.md"],
+        [22, "Languages-22.md"],
+      ]),
+      { fallbackRev: 300, syncedMods: { 11: 100, 22: 100 } }
     );
 
     // when

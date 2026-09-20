@@ -2,10 +2,15 @@ import { useEffect, useMemo, useState, type JSX } from "react";
 import type { Anki } from "src/services/anki";
 import type { AnkiNoteInfo } from "src/entities/card";
 import type { VaultNoteIndex } from "src/services/vault";
+import type { NoteSyncState } from "src/services/import";
 import {
   classifyDeckNotes,
   fetchDeckNotes,
   normalizeCardText,
+} from "src/services/import";
+import type {
+  ClassifiedNote,
+  NoteImportStatus,
 } from "src/services/import";
 import {
   cardsPreviewClasses,
@@ -20,9 +25,9 @@ export interface CardsPreviewProps {
   cardsSelectedToImport: Record<number, boolean>;
   className?: string;
   deckName: string;
-  lastSyncRev: number;
   onCardsSelectedToImportChange: (cardsSelectedToImport: Record<number, boolean>) => void;
   onNotesLoaded: (notes: AnkiNoteInfo[]) => void;
+  syncState: NoteSyncState;
   vaultNoteIndex: VaultNoteIndex;
 }
 
@@ -38,10 +43,30 @@ function ankiModified(mod: number | undefined): string {
   return mod ? new Date(mod * 1000).toLocaleString() : "unknown";
 }
 
+function previewBadgeClass(status: NoteImportStatus): string {
+  if (status === "new") {
+    return cardsPreviewClasses.previewBadgeNew;
+  }
+  if (status === "updated") {
+    return cardsPreviewClasses.previewBadgeUpdated;
+  }
+  return cardsPreviewClasses.previewBadgeImported;
+}
+
+function previewBadgeText(item: ClassifiedNote): string {
+  if (item.status === "new") {
+    return " new";
+  }
+  if (item.status === "updated") {
+    return " updated";
+  }
+  return ` imported (${item.vaultPath ?? "?"})`;
+}
+
 export function CardsPreview({
   anki,
   deckName,
-  lastSyncRev,
+  syncState,
   vaultNoteIndex,
   cardsSelectedToImport,
   onCardsSelectedToImportChange,
@@ -87,9 +112,9 @@ export function CardsPreview({
   const classified = useMemo(
     () =>
       rawNotes
-        ? classifyDeckNotes(rawNotes, vaultNoteIndex, lastSyncRev)
+        ? classifyDeckNotes(rawNotes, vaultNoteIndex, syncState)
         : null,
-    [rawNotes, vaultNoteIndex, lastSyncRev]
+    [rawNotes, vaultNoteIndex, syncState]
   );
 
   const applyDefaultCardsSelectedToImport = () => {
@@ -100,7 +125,7 @@ export function CardsPreview({
       const merged = { ...cardsSelectedToImport };
       for (const item of classified) {
         if (!(item.note.noteId in merged)) {
-          merged[item.note.noteId] = item.status === "new";
+          merged[item.note.noteId] = item.status !== "imported";
         }
       }
       onCardsSelectedToImportChange(merged);
@@ -144,6 +169,7 @@ export function CardsPreview({
             cells={[
               <input
                 checked={cardsSelectedToImport[item.note.noteId] ?? false}
+                disabled={item.status === "imported"}
                 key="select"
                 onChange={(event) =>
                   onCardsSelectedToImportChange({
@@ -165,18 +191,19 @@ export function CardsPreview({
                 <span
                   className={mergeClasses(
                     cardsPreviewClasses.previewBadge,
-                    item.status === "new"
-                      ? cardsPreviewClasses.previewBadgeNew
-                      : cardsPreviewClasses.previewBadgeConflict
+                    previewBadgeClass(item.status)
                   )}
                 >
-                  {item.status === "new"
-                    ? " new"
-                    : ` conflict (${item.vaultPath ?? "?"})`}
+                  {previewBadgeText(item)}
                 </span>
               </label>,
             ]}
-            className={cardsPreviewClasses.previewRow}
+            className={mergeClasses(
+              cardsPreviewClasses.previewRow,
+              item.status === "imported"
+                ? cardsPreviewClasses.previewRowImported
+                : undefined
+            )}
             key={item.note.noteId}
           />
         ))}

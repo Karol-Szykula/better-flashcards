@@ -14,4 +14,5 @@ export interface ISettings {
   inlineSeparatorReverse: string;
   lastSyncRev: number;
   sourceSupport: boolean;
+  syncedNoteMods: Record<number, number>;
 }

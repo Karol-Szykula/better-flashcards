@@ -65,7 +65,7 @@ function stripMarkdown(input: string): string {
     .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1");
 }
 
-export type NoteImportStatus = "new" | "conflict";
+export type NoteImportStatus = "new" | "updated" | "imported";
 
 export interface ClassifiedNote {
   note: AnkiNoteInfo;
@@ -73,24 +73,39 @@ export interface ClassifiedNote {
   vaultPath?: string;
 }
 
+export interface NoteSyncState {
+  fallbackRev: number;
+  syncedMods: Record<number, number>;
+}
+
+export function noteSyncRev(
+  sync: NoteSyncState,
+  noteId: number
+): number {
+  return sync.syncedMods[noteId] ?? sync.fallbackRev;
+}
+
 export function isNoteUpdatedSince(
   note: AnkiNoteInfo,
-  lastSyncRev: number
+  sync: NoteSyncState
 ): boolean {
-  return (note.mod ?? 0) > lastSyncRev;
+  return (note.mod ?? 0) > noteSyncRev(sync, note.noteId);
 }
 
 export function classifyDeckNotes(
   notes: AnkiNoteInfo[],
   vaultNoteIndex: VaultNoteIndex,
-  lastSyncRev = 0
+  sync: NoteSyncState = { fallbackRev: 0, syncedMods: {} }
 ): ClassifiedNote[] {
   return notes.map((note) => {
     const vaultPath = vaultNoteIndex.get(note.noteId);
-    if (vaultPath === undefined || isNoteUpdatedSince(note, lastSyncRev)) {
+    if (vaultPath === undefined) {
       return { note, status: "new" };
     }
-    return { note, status: "conflict", vaultPath };
+    if (isNoteUpdatedSince(note, sync)) {
+      return { note, status: "updated", vaultPath };
+    }
+    return { note, status: "imported", vaultPath };
   });
 }
 
@@ -380,10 +395,10 @@ export interface ExecuteImportRequest {
 export interface ImportExecutionReport {
   cancelled: boolean;
   created: number;
-  lastSyncRev: number;
   mediaFiles: number;
   overwritten: number;
   skipped: number;
+  syncedNotes: Record<number, number>;
 }
 
 export async function executeImport(
@@ -425,7 +440,7 @@ export async function executeImport(
     skipped: request.notes.length - selected.length,
     mediaFiles: Object.keys(importedPaths).length,
     cancelled: false,
-    lastSyncRev: 0,
+    syncedNotes: {},
   };
   let processed = 0;
   for (const item of built) {
@@ -452,7 +467,7 @@ export async function executeImport(
       await vault.create(targetPath, content);
       report.created += 1;
     }
-    report.lastSyncRev = Math.max(report.lastSyncRev, item.note.mod ?? 0);
+    report.syncedNotes[item.note.noteId] = item.note.mod ?? 0;
     processed += 1;
     request.onProgress?.(processed, built.length);
   }

@@ -201,8 +201,16 @@
   cursor:  pointer;
 }
 
-.flashcards-import-wizard-modal__preview-badge--conflict {
+.flashcards-import-wizard-modal__preview-row--imported {
+  opacity: 0.5;
+}
+
+.flashcards-import-wizard-modal__preview-badge--updated {
   color: var(--text-warning);
+}
+
+.flashcards-import-wizard-modal__preview-badge--imported {
+  color: var(--text-faint);
 }
 
 .flashcards-import-wizard-modal__preview-badge--new {
@@ -240,6 +248,10 @@
 .flashcards-import-wizard-modal__list-header {
   font-size: var(--flashcards-import-wizard-modal__list-header-font-size);
   opacity:   0.7;
+  position:  sticky;
+  top:       0;
+  background: var(--background-primary);
+  z-index:   1;
 }
 
 .flashcards-import-wizard-modal__labeled-control {

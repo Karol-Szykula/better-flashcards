@@ -17,6 +17,7 @@ export function createSettings(overrides: Partial<ISettings> = {}): ISettings {
     ignoredDirectories: "",
     lastSyncRev: 0,
     fieldMappings: {},
+    syncedNoteMods: {},
     ...overrides,
   };
 }

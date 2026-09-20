@@ -115,7 +115,7 @@ describe("ImportExecution", () => {
       created: 1,
       skipped: 1,
       cancelled: false,
-      lastSyncRev: 100,
+      syncedNotes: { 101: 100 },
     });
   });
 

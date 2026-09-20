@@ -1,4 +1,4 @@
-import { useEffect, useState, type JSX } from "react";
+import { useEffect, useMemo, useState, type JSX } from "react";
 import type { Vault } from "obsidian";
 import { Anki } from "src/services/anki";
 import type { ISettings } from "src/conf/settings";
@@ -81,10 +81,17 @@ export function ImportWizard({
   };
 
   const finishImport = (report: ImportExecutionReport) => {
-    settings.lastSyncRev = Math.max(
-      settings.lastSyncRev ?? 0,
-      report.lastSyncRev
-    );
+    settings.syncedNoteMods = {
+      ...(settings.syncedNoteMods ?? {}),
+      ...report.syncedNotes,
+    };
+    const importedMods = Object.values(report.syncedNotes);
+    if (importedMods.length > 0) {
+      settings.lastSyncRev = Math.max(
+        settings.lastSyncRev ?? 0,
+        ...importedMods
+      );
+    }
     void saveSettings();
   };
 
@@ -96,6 +103,13 @@ export function ImportWizard({
   };
 
   const cardsSelectedToImportCount = Object.values(cardsSelectedToImport).filter(Boolean).length;
+  const syncState = useMemo(
+    () => ({
+      fallbackRev: settings.lastSyncRev ?? 0,
+      syncedMods: settings.syncedNoteMods ?? {},
+    }),
+    [settings.lastSyncRev, settings.syncedNoteMods]
+  );
   const canAdvance = canAdvanceFromPage(
     currentPage,
     selectedDeckName,
@@ -124,9 +138,9 @@ export function ImportWizard({
           <DeckSelection
             anki={anki}
             className={commonWizardClasses.pageView}
-            lastSyncRev={settings.lastSyncRev ?? 0}
             onSelectDeckName={setSelectedDeckName}
             selectedDeckName={selectedDeckName}
+            syncState={syncState}
             vaultNoteIndex={vaultNoteIndex}
           />
         )}
@@ -147,9 +161,9 @@ export function ImportWizard({
             className={commonWizardClasses.pageView}
             deckName={selectedDeckName}
             key={selectedDeckName}
-            lastSyncRev={settings.lastSyncRev ?? 0}
             onCardsSelectedToImportChange={setCardsSelectedToImport}
             onNotesLoaded={setDeckNotes}
+            syncState={syncState}
             vaultNoteIndex={vaultNoteIndex}
           />
         )}

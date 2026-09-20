@@ -100,6 +100,7 @@ export default class ObsidianFlashcard extends Plugin {
       ignoredDirectories: "",
       lastSyncRev: 0,
       fieldMappings: {},
+      syncedNoteMods: {},
     };
   }
 

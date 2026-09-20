@@ -42,10 +42,13 @@ export const fieldMappingClasses = {
 
 export const cardsPreviewClasses = {
   previewRow: "flashcards-import-wizard-modal__preview-row",
+  previewRowImported: "flashcards-import-wizard-modal__preview-row--imported",
   previewBadge: "flashcards-import-wizard-modal__preview-badge",
   previewBadgeNew: "flashcards-import-wizard-modal__preview-badge--new",
-  previewBadgeConflict:
-    "flashcards-import-wizard-modal__preview-badge--conflict",
+  previewBadgeUpdated:
+    "flashcards-import-wizard-modal__preview-badge--updated",
+  previewBadgeImported:
+    "flashcards-import-wizard-modal__preview-badge--imported",
   previewDetails: "flashcards-import-wizard-modal__preview-details",
   previewPagination: "flashcards-import-wizard-modal__preview-pagination",
 } as const;

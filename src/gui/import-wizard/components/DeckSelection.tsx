@@ -1,7 +1,8 @@
 import { useEffect, useState, type JSX } from "react";
 import type { Anki } from "src/services/anki";
 import type { VaultNoteIndex } from "src/services/vault";
-import { fetchDeckNotes } from "src/services/import";
+import type { NoteSyncState } from "src/services/import";
+import { fetchDeckNotes, isNoteUpdatedSince } from "src/services/import";
 import {
   commonWizardClasses,
   deckSelectionClasses,
@@ -13,9 +14,9 @@ import { LabeledControl, ListRow } from "src/gui/import-wizard/list/ListRow";
 export interface DeckSelectionProps {
   anki: Anki;
   className?: string;
-  lastSyncRev: number;
   onSelectDeckName: (deckName: string) => void;
   selectedDeckName: string;
+  syncState: NoteSyncState;
   vaultNoteIndex: VaultNoteIndex;
 }
 
@@ -74,7 +75,7 @@ function splitDeckHierarchy(deckName: string): {
 async function fetchDecksWithNotes(
   anki: Anki,
   vaultNoteIndex: VaultNoteIndex,
-  lastSyncRev: number
+  syncState: NoteSyncState
 ): Promise<DeckWithNotes[]> {
   const deckNames = await anki.getDeckNames();
   const decksWithNotes = await Promise.all(
@@ -88,7 +89,7 @@ async function fetchDecksWithNotes(
           deckName,
           noteIds,
           vaultNoteIndex,
-          lastSyncRev
+          syncState
         ),
       };
     })
@@ -103,7 +104,7 @@ async function countUpdatedNotes(
   deckName: string,
   noteIds: number[],
   vaultNoteIndex: VaultNoteIndex,
-  lastSyncRev: number
+  syncState: NoteSyncState
 ): Promise<number | null> {
   if (countImportedNotes(noteIds, vaultNoteIndex) !== noteIds.length) {
     return null;
@@ -113,7 +114,7 @@ async function countUpdatedNotes(
   }
   try {
     const notes = await fetchDeckNotes(anki, deckName);
-    return notes.filter((note) => (note.mod ?? 0) > lastSyncRev).length;
+    return notes.filter((note) => isNoteUpdatedSince(note, syncState)).length;
   } catch {
     return null;
   }
@@ -125,7 +126,7 @@ function isEmptyDefaultDeck(deckName: string, noteIds: number[]): boolean {
 
 export function DeckSelection({
   anki,
-  lastSyncRev,
+  syncState,
   vaultNoteIndex,
   selectedDeckName,
   onSelectDeckName,
@@ -141,7 +142,7 @@ export function DeckSelection({
         const decksWithNotes = await fetchDecksWithNotes(
           anki,
           vaultNoteIndex,
-          lastSyncRev
+          syncState
         );
         if (!isCancelled) {
           setDecks(decksWithNotes);
@@ -159,7 +160,7 @@ export function DeckSelection({
     };
   };
 
-  useEffect(loadDeckList, [anki, vaultNoteIndex, lastSyncRev]);
+  useEffect(loadDeckList, [anki, vaultNoteIndex, syncState]);
 
   const rootClassName = mergeClasses(commonWizardClasses.pageView, className);
   const listColumns = ["Deck", "Imported"];
