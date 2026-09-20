@@ -125,8 +125,9 @@ export class Parser {
       // Find first heading and its level
       // This is the case of a #flashcard in a paragraph
       for (i; i >= 0; i--) {
-        if (headings[i].index < currentIndex) {
-          currentIndex = headings[i].index;
+        const headingIndex = headings[i].index ?? 0;
+        if (headingIndex < currentIndex) {
+          currentIndex = headingIndex;
           goalLevel = headings[i][1].length - 1;
 
           context.unshift(headings[i][2].trim());
@@ -138,8 +139,9 @@ export class Parser {
     // Search for the other headings
     for (i; i >= 0; i--) {
       const currentLevel = headings[i][1].length;
-      if (currentLevel == goalLevel && headings[i].index < currentIndex) {
-        currentIndex = headings[i].index;
+      const headingIndex = headings[i].index ?? 0;
+      if (currentLevel == goalLevel && headingIndex < currentIndex) {
+        currentIndex = headingIndex;
         goalLevel = currentLevel - 1;
 
         context.unshift(headings[i][2].trim());

@@ -382,6 +382,25 @@ describe("CardsService - execute", () => {
     expect(createDeck?.params).toMatchObject({ deck: frontmatterDeckName });
   });
 
+  test("given missing file cache when executed then falls back to default deck", async () => {
+    // given
+    const { cardsService, app } = setupService({ [notePath]: cardContent });
+    mockAnkiFlowResponses();
+    jest
+      .spyOn(app.metadataCache, "getFileCache")
+      .mockReturnValueOnce(null);
+
+    // when
+    const result = await cardsService.execute(noteFileForService(app), true);
+
+    // then
+    expect(result).toContain(insertSuccessMessage);
+    const createDeck = AnkiConnectMock.requests.find(
+      (r) => r.action === "createDeck"
+    );
+    expect(createDeck?.params).toMatchObject({ deck: "Default" });
+  });
+
   test("given matching cards when executed then reports nothing to do", async () => {
     // given
     const existingCardContent = `What is 2+2? :: 4\n^${noteIdInAnki}\n`;

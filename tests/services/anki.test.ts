@@ -482,7 +482,7 @@ describe("Anki - addCards", () => {
     }
   });
 
-  test("given failing singles when added then resolves nulls", async () => {
+  test("given failing singles when added then resolves failure sentinels", async () => {
     // given
     const alwaysFailingResponse: Record<string, unknown> = {
       result: null,
@@ -496,7 +496,7 @@ describe("Anki - addCards", () => {
     const ids = await new Anki().addCards(newCards);
 
     // then
-    expect(ids).toEqual([null, null]);
+    expect(ids).toEqual([-1, -1]);
   });
 });
 

@@ -1,28 +1,28 @@
 import { ISettings } from "src/conf/settings";
 
 export class Regex {
-  headingsRegex: RegExp;
-  wikiImageLinks: RegExp;
-  markdownImageLinks: RegExp;
-  wikiAudioLinks: RegExp;
-  obsidianCodeBlock: RegExp; // ```code block``
-  codeBlock: RegExp;
-  mathBlock: RegExp; // $$ latex $$
-  mathInline: RegExp; // $ latex $
-  cardsDeckLine: RegExp;
-  cardsToDelete: RegExp;
-  globalTagsSplitter: RegExp;
-  tagHierarchy: RegExp;
+  headingsRegex!: RegExp;
+  wikiImageLinks!: RegExp;
+  markdownImageLinks!: RegExp;
+  wikiAudioLinks!: RegExp;
+  obsidianCodeBlock!: RegExp; // ```code block``
+  codeBlock!: RegExp;
+  mathBlock!: RegExp; // $$ latex $$
+  mathInline!: RegExp; // $ latex $
+  cardsDeckLine!: RegExp;
+  cardsToDelete!: RegExp;
+  globalTagsSplitter!: RegExp;
+  tagHierarchy!: RegExp;
 
-  flashscardsWithTag: RegExp;
-  cardsInlineStyle: RegExp;
-  cardsSpacedStyle: RegExp;
-  cardsClozeWholeLine: RegExp;
-  singleClozeCurly: RegExp;
-  singleClozeHighlight: RegExp;
-  clozeHighlight: RegExp;
+  flashscardsWithTag!: RegExp;
+  cardsInlineStyle!: RegExp;
+  cardsSpacedStyle!: RegExp;
+  cardsClozeWholeLine!: RegExp;
+  singleClozeCurly!: RegExp;
+  singleClozeHighlight!: RegExp;
+  clozeHighlight!: RegExp;
 
-  embedBlock: RegExp;
+  embedBlock!: RegExp;
 
   constructor(settings: ISettings) {
     this.update(settings);

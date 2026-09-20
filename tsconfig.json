@@ -1,5 +1,6 @@
 { 
   "compilerOptions": {
+    "strict": true,
     "inlineSourceMap": true,
     "inlineSources": true,
     "module": "ESNext",

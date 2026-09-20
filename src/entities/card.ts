@@ -60,7 +60,7 @@ export abstract class Card {
     this.mediaNames = mediaNames;
     this.mediaBase64Encoded = [];
     this.oldTags = [];
-    this.oldId = null;
+    this.oldId = -1;
     this.containsCode = containsCode;
     this.modelName = "";
   }

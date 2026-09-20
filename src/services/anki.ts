@@ -109,7 +109,7 @@ export class Anki {
           ids.push(result[0]);
         } catch (e) {
           console.warn("Flashcards: single addNote failed:", e);
-          ids.push(null);
+          ids.push(-1);
         }
       }
       return ids;

@@ -2,7 +2,6 @@ import { Anki } from "src/services/anki";
 import {
   App,
   FileSystemAdapter,
-  FrontMatterCache,
   Notice,
   parseFrontMatterEntry,
   TFile,
@@ -33,6 +32,10 @@ export class CardsService {
     this.regex = new Regex(this.settings);
     this.parser = new Parser(this.regex, this.settings);
     this.anki = new Anki();
+    this.updateFile = false;
+    this.totalOffset = 0;
+    this.file = "";
+    this.notifications = [];
   }
 
   public async setup(): Promise<void> {
@@ -68,11 +71,15 @@ export class CardsService {
     let globalTags: string[];
 
     // Parse frontmatter
-    const frontmatter = fileCachedMetadata.frontmatter;
+    const frontmatter = fileCachedMetadata?.frontmatter;
     let deckName: string;
-    if (parseFrontMatterEntry(frontmatter, "cards-deck")) {
+    if (frontmatter && parseFrontMatterEntry(frontmatter, "cards-deck")) {
       deckName = parseFrontMatterEntry(frontmatter, "cards-deck");
-    } else if (this.settings.folderBasedDeck && activeFile.parent.path !== "/") {
+    } else if (
+      this.settings.folderBasedDeck &&
+      activeFile.parent &&
+      activeFile.parent.path !== "/"
+    ) {
       const folderDeck = activeFile.parent.path.split("/").join("::");
       deckName = this.settings.deck + "::" + folderDeck;
     } else {
@@ -119,7 +126,7 @@ export class CardsService {
       await this.insertMedias(cards, sourcePath);
       await this.deleteCardsOnAnki(cardsToDelete, ankiBlocks);
       await this.updateCardsOnAnki(cardsToUpdate);
-      await this.insertCardsOnAnki(cardsToCreate, frontmatter, deckName);
+      await this.insertCardsOnAnki(cardsToCreate, deckName);
 
       // Update decks if needed
       const deckNeedToBeChanged = await this.deckNeedToBeChanged(
@@ -173,6 +180,9 @@ export class CardsService {
             decodeURIComponent(media),
             sourcePath
           );
+          if (!image) {
+            continue;
+          }
           try {
             const binaryMedia = await this.app.vault.readBinary(image);
             card.mediaBase64Encoded.push(arrayBufferToBase64(binaryMedia));
@@ -186,7 +196,6 @@ export class CardsService {
 
   private async insertCardsOnAnki(
     cardsToCreate: Card[],
-    frontmatter: FrontMatterCache,
     deckName: string
   ): Promise<number> {
     if (cardsToCreate.length) {
@@ -195,12 +204,12 @@ export class CardsService {
         const ids = await this.anki.addCards(cardsToCreate);
 
         ids.map((id: number, index: number) => {
-          cardsToCreate[index].id = id;
+          cardsToCreate[index].id = id ?? -1;
         });
 
         let total = 0;
         cardsToCreate.forEach((card) => {
-          if (card.id === null) {
+          if (card.id === -1) {
             new Notice(
               `Error, could not add: '${card.initialContent}'`,
               noticeTimeout
@@ -211,7 +220,7 @@ export class CardsService {
           if (card.reversed) { total += 2; } else { total++; }
         });
 
-        this.updateFrontmatter(frontmatter, deckName);
+        this.updateFrontmatter(deckName);
         this.writeAnkiBlocks(cardsToCreate);
 
         this.notifications.push(
@@ -223,9 +232,11 @@ export class CardsService {
         this.notifications.push(`Error: Could not write cards on Anki (${cardsToCreate.map(c => c.initialContent).join(", ")})`);
       }
     }
+
+    return 0;
   }
 
-  private updateFrontmatter(frontmatter: FrontMatterCache, deckName: string) {
+  private updateFrontmatter(deckName: string) {
     const cardsDeckLine = `cards-deck: ${deckName}\n`;
     const frontmatterMatch = this.file.match(/^---\n([\s\S]*?)\n---/);
 
@@ -246,7 +257,7 @@ export class CardsService {
   private writeAnkiBlocks(cardsToCreate: Card[]) {
     // Strip stale block IDs for cards being re-created
     for (const card of cardsToCreate) {
-      if (card.oldId) {
+      if (card.oldId !== -1) {
         const oldIdPattern = new RegExp(`\\n?\\^${card.oldId}\\s*`, "g");
         const before = this.file.length;
         this.file = this.file.replace(oldIdPattern, "");
@@ -256,7 +267,7 @@ export class CardsService {
     }
 
     for (const card of cardsToCreate) {
-      if (card.id !== null && !card.inserted) {
+      if (card.id !== -1 && !card.inserted) {
         let id = card.getIdFormat();
         if (card instanceof Inlinecard) {
           if (this.settings.inlineID) {
@@ -292,6 +303,8 @@ export class CardsService {
 
       return cards.length;
     }
+
+    return 0;
   }
 
   public async deleteCardsOnAnki(
@@ -302,6 +315,7 @@ export class CardsService {
       let deletedCards = 0;
       for (const block of ankiBlocks) {
         const id = Number(block[1]);
+        const blockIndex = block["index"] ?? 0;
 
         if (cards.includes(id)) {
           try {
@@ -310,9 +324,9 @@ export class CardsService {
 
             this.updateFile = true;
             this.file =
-              this.file.substring(0, block["index"]) +
+              this.file.substring(0, blockIndex) +
               this.file.substring(
-                block["index"] + block[0].length,
+                blockIndex + block[0].length,
                 this.file.length
               );
             this.totalOffset -= block[0].length;
@@ -327,6 +341,8 @@ export class CardsService {
 
       return deletedCards;
     }
+
+    return 0;
   }
 
   private getAnkiIDs(blocks: RegExpMatchArray[]): number[] {
@@ -409,7 +425,7 @@ export class CardsService {
   public parseGlobalTags(file: string): string[] {
     const tags = file.match(/(?:cards-)?tags: ?(.*)/im);
     const globalTags: string[] = tags
-      ? tags[1].match(this.regex.globalTagsSplitter)
+      ? (tags[1].match(this.regex.globalTagsSplitter) ?? [])
       : [];
 
     if (globalTags) {

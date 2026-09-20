@@ -7,8 +7,8 @@ import { Anki } from "src/services/anki";
 import { noticeTimeout, flashcardsIcon } from "src/conf/constants";
 
 export default class ObsidianFlashcard extends Plugin {
-  settings: ISettings;
-  private cardsService: CardsService;
+  settings!: ISettings;
+  private cardsService!: CardsService;
 
   async onload() {
     addIcon("flashcards", flashcardsIcon);

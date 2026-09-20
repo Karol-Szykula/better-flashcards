@@ -3,7 +3,6 @@ TODO
 
 [ ] Per-action AnkiConnect params types (with import work)
 [ ] notesInfo chunking by 100: add test (code exists)
-[ ] Strict mode in tsconfig (consider)
 [ ] Incremental vault index (when full scan hurts)
 [ ] Model packs: pack carries model + field mapping, nothing more until needed
     [ ] Built-in packs shipped with plugin
