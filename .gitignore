@@ -36,3 +36,8 @@ move.sh
 
 # Github
 .DS_Store
+
+# Coverage
+coverage/
+# End of Selection
+```
