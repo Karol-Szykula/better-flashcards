@@ -7,15 +7,22 @@ import { Flashcard } from "src/entities/flashcard";
 import { Inlinecard } from "src/entities/inlinecard";
 import { Spacedcard } from "src/entities/spacedcard";
 import { Clozecard } from "src/entities/clozecard";
+import { Yamlcard } from "src/entities/yamlcard";
+import type { YamlEngine } from "src/gui/flashcard-form/yaml";
 import {
   basicModelName,
   basicReversedModelName,
   spacedModelName,
 } from "src/conf/constants";
 
+const jsonEngine: YamlEngine = {
+  parse: (source) => JSON.parse(source) as unknown,
+  stringify: (value) => JSON.stringify(value),
+};
+
 function createParser(overrides: Partial<ISettings> = {}): Parser {
   const settings = createSettings(overrides);
-  return new Parser(new Regex(settings), settings);
+  return new Parser(new Regex(settings), settings, jsonEngine);
 }
 
 function generate(
@@ -379,6 +386,52 @@ describe("Parser - multiline cards with tag", () => {
     // then
     expect(cards).toHaveLength(1);
     expect(cards[0].fields["Back"]).toContain(`<p>See !<a href="obsidian://open?vault=Vault&file=embedded-note.md">${embedSrc}</a>${embedMarker}</p>`);
+  });
+});
+
+describe("Parser - yaml flashcard-form blocks", () => {
+  test("given a form block without id when parsed then returns an uninserted yaml card", () => {
+    // given
+    const file = '```flashcard-form\n{"front": "Q", "back": "A", "tags": "math"}\n```\n';
+
+    // when
+    const cards = generate(file);
+
+    // then
+    expect(cards).toHaveLength(1);
+    expect(cards[0]).toBeInstanceOf(Yamlcard);
+    expect(cards[0].fields["Front"]).toBe("Q");
+    expect(cards[0].fields["Back"]).toBe("A");
+    expect(cards[0].tags).toEqual(["math"]);
+    expect(cards[0].id).toBe(-1);
+    expect(cards[0].inserted).toBe(false);
+  });
+
+  test("given a form block with id when parsed then returns an inserted yaml card", () => {
+    // given
+    const file =
+      '```flashcard-form\n{"front": "Q", "back": "A", "tags": "", "id": 101}\n```\n';
+
+    // when
+    const cards = generate(file);
+
+    // then
+    expect(cards).toHaveLength(1);
+    expect(cards[0]).toBeInstanceOf(Yamlcard);
+    expect(cards[0].id).toBe(101);
+    expect(cards[0].inserted).toBe(true);
+  });
+
+  test("given an invalid form block when parsed then skips it", () => {
+    // given
+    const file = "```flashcard-form\nnot json{{{\n```\nQ :: A\n";
+
+    // when
+    const cards = generate(file);
+
+    // then
+    expect(cards).toHaveLength(1);
+    expect(cards[0]).not.toBeInstanceOf(Yamlcard);
   });
 });
 

@@ -5,6 +5,18 @@ import type { ISettings } from "src/conf/settings";
 
 export type VaultNoteIndex = Map<number, string>;
 
+const yamlIdPattern = /^id:\s*(\d+)\s*$/gm;
+
+export function extractYamlNoteIds(content: string): number[] {
+  const ids: number[] = [];
+  yamlIdPattern.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = yamlIdPattern.exec(content)) !== null) {
+    ids.push(Number(match[1]));
+  }
+  return ids;
+}
+
 export function extractFileNoteIndex(
   parser: Parser,
   content: string,
@@ -13,6 +25,9 @@ export function extractFileNoteIndex(
 ): void {
   for (const block of parser.getAnkiIDsBlocks(content)) {
     vaultNoteIndex.set(Number(block[1]), filePath);
+  }
+  for (const noteId of extractYamlNoteIds(content)) {
+    vaultNoteIndex.set(noteId, filePath);
   }
 }
 

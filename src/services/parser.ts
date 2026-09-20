@@ -1,16 +1,30 @@
 import { ISettings } from "src/conf/settings";
 import * as showdown from "showdown";
 import { Regex } from "src/conf/regex";
-import { ankiFieldNames } from "src/conf/constants";
+import {
+  ankiFieldNames,
+  clozeModelName,
+  spacedModelName,
+} from "src/conf/constants";
 import { Flashcard } from "../entities/flashcard";
 import { Inlinecard } from "src/entities/inlinecard";
 import { Spacedcard } from "src/entities/spacedcard";
 import { Clozecard } from "src/entities/clozecard";
+import { Yamlcard } from "src/entities/yamlcard";
 import { escapeMarkdown } from "src/utils";
+import {
+  createFlashcardFencePattern,
+} from "src/services/yaml-flashcard";
+import { parseFlashcardForm } from "src/gui/flashcard-form/parser";
+import {
+  obsidianYamlEngine,
+  type YamlEngine,
+} from "src/gui/flashcard-form/yaml";
 
 export class Parser {
   private regex: Regex;
   private settings: ISettings;
+  private yaml: YamlEngine;
   private htmlConverter: showdown.Converter;
 
   /**
@@ -18,9 +32,14 @@ export class Parser {
    * @param regex The regex definitions used to recognize flashcards, built from the current settings.
    * @param settings The plugin settings that control card generation behavior.
    */
-  constructor(regex: Regex, settings: ISettings) {
+  constructor(
+    regex: Regex,
+    settings: ISettings,
+    yaml: YamlEngine = obsidianYamlEngine
+  ) {
     this.regex = regex;
     this.settings = settings;
+    this.yaml = yaml;
     this.htmlConverter = new showdown.Converter();
     this.htmlConverter.setOption("simplifiedAutoLink", true);
     this.htmlConverter.setOption("tables", true);
@@ -61,6 +80,9 @@ export class Parser {
 
     note = this.substituteObsidianLinks(`[[${note}]]`, vault);
     cards = cards.concat(
+      this.generateCardsFromYamlBlocks(file, deck, vault, note, globalTags)
+    );
+    cards = cards.concat(
       this.generateCardsWithTag(file, headings, deck, vault, note, globalTags)
     );
     cards = cards.concat(
@@ -74,13 +96,29 @@ export class Parser {
     );
 
     // Filter out cards that are fully inside a code block, a math block or a math inline block
-    const codeBlocks = [...file.matchAll(this.regex.obsidianCodeBlock)];
+    const formRanges = [...file.matchAll(createFlashcardFencePattern())].map(
+      (fence) => [fence.index ?? 0, (fence.index ?? 0) + fence[0].length]
+    );
+    const codeBlocks = [...file.matchAll(this.regex.obsidianCodeBlock)].filter(
+      (block) => !block[0].startsWith("```flashcard-form")
+    );
     const mathBlocks = [...file.matchAll(this.regex.mathBlock)];
     const mathInline = [...file.matchAll(this.regex.mathInline)];
     const blocksToFilter = [...codeBlocks, ...mathBlocks, ...mathInline];
     const rangesToDiscard = blocksToFilter.map(x => ([x.index, x.index + x[0].length]))
     cards = cards.filter(card => {
+      if (card instanceof Yamlcard) {
+        return true;
+      }
       const cardRange = [card.initialOffset, card.endOffset];
+      const isInFormBlock = formRanges.some(range => {
+        return (
+          cardRange[0] >= range[0] && cardRange[1] <= range[1]
+        );
+      });
+      if (isInFormBlock) {
+        return false;
+      }
       const isInRangeToDiscard = rangesToDiscard.some(range => {
         return (
           cardRange[0] >= range[0] && cardRange[1] <= range[1]
@@ -149,6 +187,73 @@ export class Parser {
     }
 
     return context;
+  }
+
+  private yamlCardFields(
+    front: string,
+    back: string,
+    model: string
+  ): Record<string, string> {
+    if (model.startsWith(clozeModelName)) {
+      return { Text: front, Extra: back };
+    }
+    if (model.startsWith(spacedModelName)) {
+      return { Prompt: front };
+    }
+    return { Front: front, Back: back };
+  }
+
+  private generateCardsFromYamlBlocks(
+    file: string,
+    deck: string,
+    vault: string,
+    note: string,
+    globalTags: string[]
+  ): Yamlcard[] {
+    const cards: Yamlcard[] = [];
+    const fencePattern = createFlashcardFencePattern();
+    let match: RegExpExecArray | null;
+    while ((match = fencePattern.exec(file)) !== null) {
+      let block;
+      try {
+        block = parseFlashcardForm(match[1], this.yaml);
+      } catch {
+        continue;
+      }
+      const model =
+        typeof block.extra["model"] === "string" && block.extra["model"]
+          ? block.extra["model"]
+          : "Basic";
+      const fields = this.yamlCardFields(block.front, block.back, model);
+      const cardTags = block.tags
+        .split(" ")
+        .filter((tag) => tag.length > 0)
+        .concat(globalTags);
+      let medias: string[] = this.getImageLinks(block.front);
+      medias = medias.concat(this.getImageLinks(block.back));
+      medias = medias.concat(this.getAudioLinks(block.back));
+      const blockStart = match.index;
+      const blockEnd = blockStart + match[0].length;
+      const cardFields = { ...fields };
+      if (this.settings.sourceSupport) {
+        cardFields[ankiFieldNames.source] = note;
+      }
+      cards.push(
+        new Yamlcard(
+          block.id ?? -1,
+          deck,
+          block.front,
+          cardFields,
+          blockStart,
+          blockEnd,
+          cardTags,
+          block.id !== undefined,
+          medias,
+          model
+        )
+      );
+    }
+    return cards;
   }
 
   /**

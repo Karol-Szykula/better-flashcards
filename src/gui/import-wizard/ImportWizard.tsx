@@ -87,6 +87,10 @@ export function ImportWizard({
       ...(settings.syncedNoteMods ?? {}),
       ...report.syncedNotes,
     };
+    settings.syncedNoteHashes = {
+      ...(settings.syncedNoteHashes ?? {}),
+      ...report.syncedHashes,
+    };
     const importedMods = Object.values(report.syncedNotes);
     if (importedMods.length > 0) {
       settings.lastSyncRev = Math.max(

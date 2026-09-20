@@ -9,6 +9,15 @@ import { ensureFolderExists } from "src/services/vault";
 import { importDeckMedia, rewriteMediaReferences } from "src/services/media";
 import type { MediaPathMap } from "src/services/media";
 import {
+  computeContentHash,
+  serializeYamlFlashcard,
+  yamlNoteFileName,
+} from "src/services/yaml-flashcard";
+import {
+  obsidianYamlEngine,
+  type YamlEngine,
+} from "src/gui/flashcard-form/yaml";
+import {
   basicModelName,
   basicReversedModelName,
   clozeModelName,
@@ -351,6 +360,11 @@ function joinFolder(folder: string, baseName: string): string {
   return folder ? `${folder}/${baseName}` : baseName;
 }
 
+function yamlNoteIdInContent(content: string, noteId: number): boolean {
+  const pattern = new RegExp(`^id:\\s*${noteId}\\s*$`, "m");
+  return pattern.test(content);
+}
+
 export async function resolveNoteFilePath(
   vault: Vault,
   folder: string,
@@ -369,7 +383,7 @@ export async function resolveNoteFilePath(
       }
       if (existing instanceof TFile) {
         const content = await vault.read(existing);
-        if (content.includes(`^${noteId}`)) {
+        if (yamlNoteIdInContent(content, noteId)) {
           break;
         }
       }
@@ -398,13 +412,68 @@ export interface ImportExecutionReport {
   mediaFiles: number;
   overwritten: number;
   skipped: number;
+  syncedHashes: Record<number, string>;
   syncedNotes: Record<number, number>;
+}
+
+interface YamlCardFields {
+  back: string;
+  front: string;
+  tags: string;
+}
+
+function buildYamlCardFields(
+  note: AnkiNoteInfo,
+  mapping: FieldMapping
+): YamlCardFields | null {
+  const front = mappedFieldValue(note, mapping, ankiFieldNames.front);
+  const back = mappedFieldValue(note, mapping, ankiFieldNames.back);
+  const text = mappedFieldValue(note, mapping, ankiFieldNames.text);
+  const extra = mappedFieldValue(note, mapping, ankiFieldNames.extra);
+  const prompt = mappedFieldValue(note, mapping, ankiFieldNames.prompt);
+  const tags = note.tags.join(" ");
+  if (front && back) {
+    return { back, front, tags };
+  }
+  if (text) {
+    return { back: extra, front: text, tags };
+  }
+  if (prompt) {
+    return { back: "", front: prompt, tags };
+  }
+  if (front) {
+    return { back: "", front, tags };
+  }
+  return null;
+}
+
+function rebuildYamlCardFields(
+  item: { note: AnkiNoteInfo; markdown: string; media: string[] },
+  request: ExecuteImportRequest,
+  importedPaths: MediaPathMap
+): YamlCardFields {
+  const mapping = request.fieldMappings[item.note.modelName ?? "Unknown"] ?? {};
+  const rewrittenFields = Object.fromEntries(
+    Object.entries(item.note.fields).map(([name, field]) => [
+      name,
+      { value: rewriteMediaReferences(field.value, importedPaths) },
+    ])
+  );
+  const rebuilt = buildYamlCardFields(
+    { ...item.note, fields: rewrittenFields },
+    mapping
+  );
+  if (rebuilt) {
+    return rebuilt;
+  }
+  return { back: "", front: "", tags: item.note.tags.join(" ") };
 }
 
 export async function executeImport(
   anki: Anki,
   vault: Vault,
-  request: ExecuteImportRequest
+  request: ExecuteImportRequest,
+  yaml: YamlEngine = obsidianYamlEngine
 ): Promise<ImportExecutionReport> {
   const selected = request.notes.filter(
     (note) => request.decisions[note.noteId] ?? false
@@ -440,6 +509,7 @@ export async function executeImport(
     skipped: request.notes.length - selected.length,
     mediaFiles: Object.keys(importedPaths).length,
     cancelled: false,
+    syncedHashes: {},
     syncedNotes: {},
   };
   let processed = 0;
@@ -448,16 +518,28 @@ export async function executeImport(
       report.cancelled = true;
       break;
     }
+    const fields = rebuildYamlCardFields(item, request, importedPaths);
+    const hash = await computeContentHash(
+      fields.front,
+      fields.back,
+      fields.tags
+    );
+    const content = serializeYamlFlashcard(
+      {
+        back: fields.back,
+        extra: { model: item.note.modelName ?? "Unknown" },
+        front: fields.front,
+        id: item.note.noteId,
+        tags: fields.tags,
+      },
+      yaml
+    );
     const targetPath = await resolveNoteFilePath(
       vault,
       folder,
-      noteTitle(request.deckName, item.note.noteId),
+      yamlNoteFileName(request.deckName, item.note.tags, item.note.noteId),
       item.note.noteId,
       takenPaths
-    );
-    const content = appendNoteId(
-      rebuildWithMedia(item, request, importedPaths),
-      item.note
     );
     const existing = await vault.getAbstractFileByPath(targetPath);
     if (existing instanceof TFile) {
@@ -468,33 +550,9 @@ export async function executeImport(
       report.created += 1;
     }
     report.syncedNotes[item.note.noteId] = item.note.mod ?? 0;
+    report.syncedHashes[item.note.noteId] = hash;
     processed += 1;
     request.onProgress?.(processed, built.length);
   }
   return report;
-}
-
-function appendNoteId(markdown: string, note: AnkiNoteInfo): string {
-  const rewritten = markdown.trim();
-  return `${rewritten}\n\n^${note.noteId}\n`;
-}
-
-function rebuildWithMedia(
-  item: { note: AnkiNoteInfo; markdown: string; media: string[] },
-  request: ExecuteImportRequest,
-  importedPaths: MediaPathMap
-): string {
-  const mapping = request.fieldMappings[item.note.modelName ?? "Unknown"] ?? {};
-  const rewrittenFields = Object.fromEntries(
-    Object.entries(item.note.fields).map(([name, field]) => [
-      name,
-      { value: rewriteMediaReferences(field.value, importedPaths) },
-    ])
-  );
-  const rebuilt = buildNoteMarkdown(
-    { ...item.note, fields: rewrittenFields },
-    mapping,
-    request.flashcardsTag
-  );
-  return rebuilt.markdown;
 }

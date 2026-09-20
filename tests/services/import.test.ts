@@ -20,6 +20,7 @@ import { createSettings } from "../helpers/settings";
 import { setActiveDocument } from "../mocks/obsidian";
 import { basicModelName } from "src/conf/constants";
 import type { FieldMapping } from "src/services/import";
+import type { YamlEngine } from "src/gui/flashcard-form/yaml";
 import {
   buildNoteMarkdown,
   classifyDeckNotes,
@@ -643,6 +644,11 @@ describe("deckFolder", () => {
     return { Front: "Front", Back: "Back" };
   }
 
+  const jsonEngine: YamlEngine = {
+    parse: (source) => JSON.parse(source) as unknown,
+    stringify: (value) => JSON.stringify(value),
+  };
+
 describe("executeImport", () => {
   const flashcardsTag = "card";
 
@@ -677,14 +683,19 @@ describe("executeImport", () => {
     const notes = [basicImportNote(101, 100), basicImportNote(102, 200)];
 
     // when
-    const report = await executeImport(new Anki(), vault, {
-      deckName: "Languages",
-      notes,
-      decisions: { 101: true, 102: false },
-      fieldMappings: { Basic: basicMapping() },
-      targetFolder: "",
-      flashcardsTag,
-    });
+    const report = await executeImport(
+      new Anki(),
+      vault,
+      {
+        deckName: "Languages",
+        notes,
+        decisions: { 101: true, 102: false },
+        fieldMappings: { Basic: basicMapping() },
+        targetFolder: "",
+        flashcardsTag,
+      },
+      jsonEngine
+    );
 
     // then
     expect(report).toMatchObject({
@@ -694,10 +705,12 @@ describe("executeImport", () => {
       cancelled: false,
       syncedNotes: { 101: 100 },
     });
+    expect(report.syncedHashes[101]).toMatch(/^[0-9a-f]{64}$/);
     const written = await vault.read(
       vault.getAbstractFileByPath("Languages/Languages-101.md") as unknown as ObsidianTFile
     );
-    expect(written).toContain("^101");
+    expect(written).toContain("```flashcard-form");
+    expect(written).toContain('"id":101');
   });
 
   test("given a missing deck folder when executed then creates the folder first", async () => {
@@ -707,14 +720,19 @@ describe("executeImport", () => {
     const notes = [basicImportNote(101, 100)];
 
     // when
-    await executeImport(new Anki(), vault, {
-      deckName: "Languages",
-      notes,
-      decisions: { 101: true },
-      fieldMappings: { Basic: basicMapping() },
-      targetFolder: "",
-      flashcardsTag,
-    });
+    await executeImport(
+      new Anki(),
+      vault,
+      {
+        deckName: "Languages",
+        notes,
+        decisions: { 101: true },
+        fieldMappings: { Basic: basicMapping() },
+        targetFolder: "",
+        flashcardsTag,
+      },
+      jsonEngine
+    );
 
     // then
     expect(createFolder).toHaveBeenCalledWith("Languages");
@@ -723,19 +741,25 @@ describe("executeImport", () => {
   test("given an existing file when executed then overwrites it", async () => {
     // given
     const { vault } = executeWith({
-      "Languages/Languages-101.md": "stale content\n\n^101\n",
+      "Languages/Languages-101.md":
+        "stale content\n```flashcard-form\nfront: stale\nid: 101\n```\n",
     });
     const notes = [basicImportNote(101, 100)];
 
     // when
-    const report = await executeImport(new Anki(), vault, {
-      deckName: "Languages",
-      notes,
-      decisions: { 101: true },
-      fieldMappings: { Basic: basicMapping() },
-      targetFolder: "",
-      flashcardsTag,
-    });
+    const report = await executeImport(
+      new Anki(),
+      vault,
+      {
+        deckName: "Languages",
+        notes,
+        decisions: { 101: true },
+        fieldMappings: { Basic: basicMapping() },
+        targetFolder: "",
+        flashcardsTag,
+      },
+      jsonEngine
+    );
 
     // then
     expect(report).toMatchObject({ created: 0, overwritten: 1 });
@@ -743,7 +767,7 @@ describe("executeImport", () => {
       vault.getAbstractFileByPath("Languages/Languages-101.md") as unknown as ObsidianTFile
     );
     expect(written).not.toContain("stale content");
-    expect(written).toContain("^101");
+    expect(written).toContain('"id":101');
   });
 
   test("given identical fields when executed then writes separate files per note", async () => {
@@ -752,14 +776,19 @@ describe("executeImport", () => {
     const notes = [basicImportNote(101, 100), basicImportNote(102, 100)];
 
     // when
-    await executeImport(new Anki(), vault, {
-      deckName: "Languages",
-      notes,
-      decisions: { 101: true, 102: true },
-      fieldMappings: { Basic: basicMapping() },
-      targetFolder: "",
-      flashcardsTag,
-    });
+    await executeImport(
+      new Anki(),
+      vault,
+      {
+        deckName: "Languages",
+        notes,
+        decisions: { 101: true, 102: true },
+        fieldMappings: { Basic: basicMapping() },
+        targetFolder: "",
+        flashcardsTag,
+      },
+      jsonEngine
+    );
 
     // then
     expect(
@@ -768,6 +797,36 @@ describe("executeImport", () => {
     expect(
       vault.getAbstractFileByPath("Languages/Languages-102.md")
     ).not.toBeNull();
+  });
+
+  test("given note tags when executed then names the file with deck tags and note id", async () => {
+    // given
+    const { vault } = executeWith({});
+    const notes = [
+      {
+        ...basicImportNote(101, 100),
+        tags: ["endings", "basics"],
+      },
+    ];
+
+    // when
+    await executeImport(
+      new Anki(),
+      vault,
+      {
+        deckName: "Languages",
+        notes,
+        decisions: { 101: true },
+        fieldMappings: { Basic: basicMapping() },
+        targetFolder: "",
+        flashcardsTag,
+      },
+      jsonEngine
+    );
+
+    // then
+    const created = vault.getMarkdownFiles().map((file) => file.path);
+    expect(created).toEqual(["Languages/Languages-endings-basics-101.md"]);
   });
 
   test("given dotted field text when executed then names the file by deck and note id", async () => {
@@ -788,14 +847,19 @@ describe("executeImport", () => {
     ];
 
     // when
-    await executeImport(new Anki(), vault, {
-      deckName: "Languages",
-      notes,
-      decisions: { 104: true },
-      fieldMappings: { Basic: basicMapping() },
-      targetFolder: "",
-      flashcardsTag,
-    });
+    await executeImport(
+      new Anki(),
+      vault,
+      {
+        deckName: "Languages",
+        notes,
+        decisions: { 104: true },
+        fieldMappings: { Basic: basicMapping() },
+        targetFolder: "",
+        flashcardsTag,
+      },
+      jsonEngine
+    );
 
     // then
     const created = vault.getMarkdownFiles().map((file) => file.path);
@@ -820,14 +884,19 @@ describe("executeImport", () => {
     ];
 
     // when
-    const report = await executeImport(new Anki(), vault, {
-      deckName: "Languages",
-      notes,
-      decisions: { 103: true },
-      fieldMappings: { Basic: basicMapping() },
-      targetFolder: "",
-      flashcardsTag,
-    });
+    const report = await executeImport(
+      new Anki(),
+      vault,
+      {
+        deckName: "Languages",
+        notes,
+        decisions: { 103: true },
+        fieldMappings: { Basic: basicMapping() },
+        targetFolder: "",
+        flashcardsTag,
+      },
+      jsonEngine
+    );
 
     // then
     expect(report.mediaFiles).toBe(1);
@@ -848,14 +917,19 @@ describe("executeImport", () => {
     const notes = [basicImportNote(101, 100)];
 
     // when
-    const report = await executeImport(new Anki(), vault, {
-      deckName: "Languages",
-      notes,
-      decisions: { 101: true },
-      fieldMappings: { Basic: basicMapping() },
-      targetFolder: "",
-      flashcardsTag,
-    });
+    const report = await executeImport(
+      new Anki(),
+      vault,
+      {
+        deckName: "Languages",
+        notes,
+        decisions: { 101: true },
+        fieldMappings: { Basic: basicMapping() },
+        targetFolder: "",
+        flashcardsTag,
+      },
+      jsonEngine
+    );
 
     // then
     expect(report).toMatchObject({ created: 1, overwritten: 0 });
@@ -877,18 +951,23 @@ describe("executeImport", () => {
     let calls = 0;
 
     // when
-    const report = await executeImport(new Anki(), vault, {
-      deckName: "Languages",
-      notes,
-      decisions: { 101: true, 102: true },
-      fieldMappings: { Basic: basicMapping() },
-      targetFolder: "",
-      flashcardsTag,
-      isCancelled: () => {
-        calls += 1;
-        return calls > 1;
+    const report = await executeImport(
+      new Anki(),
+      vault,
+      {
+        deckName: "Languages",
+        notes,
+        decisions: { 101: true, 102: true },
+        fieldMappings: { Basic: basicMapping() },
+        targetFolder: "",
+        flashcardsTag,
+        isCancelled: () => {
+          calls += 1;
+          return calls > 1;
+        },
       },
-    });
+      jsonEngine
+    );
 
     // then
     expect(report.cancelled).toBe(true);

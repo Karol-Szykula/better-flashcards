@@ -15,6 +15,7 @@ import type { ISettings } from "src/conf/settings";
 import { createSettings } from "../helpers/settings";
 import { setActiveDocument } from "../mocks/obsidian";
 import { AnkiConnectMock } from "../mocks/anki-connect";
+import type { YamlEngine } from "src/gui/flashcard-form/yaml";
 
 AnkiConnectMock.install();
 
@@ -26,14 +27,21 @@ beforeEach(() => {
 const noteIdInAnki = 1111111111111;
 const notePath = "Note.md";
 
+const jsonEngine: YamlEngine = {
+  parse: (source) => JSON.parse(source) as unknown,
+  stringify: (value) => JSON.stringify(value),
+};
+
 function setupService(
   files: Record<string, string> = {},
-  settingOverrides: Partial<ISettings> = {}
+  settingOverrides: Partial<ISettings> = {},
+  yaml: YamlEngine = jsonEngine
 ): { cardsService: CardsService; app: App } {
   const app = App.createConfigured__({ files });
   const cardsService = new CardsService(
     app as unknown as ObsidianApp,
-    createSettings(settingOverrides)
+    createSettings(settingOverrides),
+    yaml
   );
   return { cardsService, app };
 }
@@ -349,6 +357,22 @@ describe("CardsService - execute", () => {
     const written = await app.vault.read(noteFile(app));
     expect(written).toContain(expectedBlockId);
     expect(written).toContain("cards-deck: Default");
+  });
+
+  test("given a yaml block without id when executed then uploads it and writes the id back", async () => {
+    // given
+    const yamlContent =
+      '```flashcard-form\n{"front": "Q", "back": "A", "tags": ""}\n```\n';
+    const { cardsService, app } = setupService({ [notePath]: yamlContent });
+    mockAnkiFlowResponses();
+
+    // when
+    const result = await cardsService.execute(noteFileForService(app), true);
+
+    // then
+    expect(result).toContain(insertSuccessMessage);
+    const written = await app.vault.read(noteFile(app));
+    expect(written).toContain("id: 111");
   });
 
   test("given unreachable Anki when executed then returns an error", async () => {

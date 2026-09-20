@@ -44,7 +44,21 @@ describe("extractFileNoteIndex", () => {
     extractFileNoteIndex(parser, cardOnlyContent, noteFileName, vaultNoteIndex);
 
     // then
-    expect(vaultNoteIndex.size).toBe(0);
+    expect(vaultNoteIndex).toEqual(new Map());
+  });
+
+  test("given content with a yaml id when extracted then collects it with the file path", async () => {
+    // given
+    const settings = createSettings();
+    const parser = new Parser(new Regex(settings), settings);
+    const vaultNoteIndex = new Map<number, string>();
+    const yamlContent = `\`\`\`flashcard-form\nfront: Q\nid: ${noteId}\n\`\`\`\n`;
+
+    // when
+    extractFileNoteIndex(parser, yamlContent, noteFileName, vaultNoteIndex);
+
+    // then
+    expect(vaultNoteIndex).toEqual(new Map([[noteId, noteFileName]]));
   });
 });
 

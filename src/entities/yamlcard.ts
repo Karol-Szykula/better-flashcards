@@ -1,0 +1,36 @@
+import { basicModelName } from "src/conf/constants";
+import { Flashcard } from "src/entities/flashcard";
+
+export class Yamlcard extends Flashcard {
+  constructor(
+    id: number,
+    deckName: string,
+    initialContent: string,
+    fields: Record<string, string>,
+    initialOffset: number,
+    endOffset: number,
+    tags: string[] = [],
+    inserted = false,
+    mediaNames: string[] = [],
+    modelName: string = basicModelName
+  ) {
+    super(
+      id,
+      deckName,
+      initialContent,
+      fields,
+      false,
+      initialOffset,
+      endOffset,
+      tags,
+      inserted,
+      mediaNames,
+      false
+    );
+    this.modelName = modelName || basicModelName;
+  }
+
+  public getIdFormat(): string {
+    return "";
+  }
+}

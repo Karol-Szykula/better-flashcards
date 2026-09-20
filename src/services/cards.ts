@@ -9,6 +9,11 @@ import {
 import { Parser } from "src/services/parser";
 import { ISettings } from "src/conf/settings";
 import { Card, AnkiNoteInfo } from "src/entities/card";
+import { Yamlcard } from "src/entities/yamlcard";
+import {
+  obsidianYamlEngine,
+  type YamlEngine,
+} from "src/gui/flashcard-form/yaml";
 import { arrayBufferToBase64 } from "src/utils";
 import { Regex } from "src/conf/regex";
 import { noticeTimeout } from "src/conf/constants";
@@ -26,11 +31,11 @@ export class CardsService {
   private file: string;
   private notifications: string[];
 
-  constructor(app: App, settings: ISettings) {
+  constructor(app: App, settings: ISettings, yaml: YamlEngine = obsidianYamlEngine) {
     this.app = app;
     this.settings = settings;
     this.regex = new Regex(this.settings);
-    this.parser = new Parser(this.regex, this.settings);
+    this.parser = new Parser(this.regex, this.settings, yaml);
     this.anki = new Anki();
     this.updateFile = false;
     this.totalOffset = 0;
@@ -267,6 +272,9 @@ export class CardsService {
     }
 
     for (const card of cardsToCreate) {
+      if (card instanceof Yamlcard) {
+        continue;
+      }
       if (card.id !== -1 && !card.inserted) {
         let id = card.getIdFormat();
         if (card instanceof Inlinecard) {
@@ -286,6 +294,25 @@ export class CardsService {
           this.file.substring(offset, this.file.length + 1);
         this.totalOffset += id.length;
       }
+    }
+    this.writeYamlBlockIds(cardsToCreate);
+  }
+
+  private writeYamlBlockIds(cardsToCreate: Card[]) {
+    for (const card of cardsToCreate) {
+      if (!(card instanceof Yamlcard) || card.id === -1 || card.inserted) {
+        continue;
+      }
+      const start = card.initialOffset + this.totalOffset;
+      const end = card.endOffset + this.totalOffset;
+      const block = this.file.substring(start, end);
+      const updated = /^id:\s*.+$/m.test(block)
+        ? block.replace(/^id:\s*.+$/m, `id: ${card.id}`)
+        : `${block}\nid: ${card.id}`;
+      this.file =
+        this.file.substring(0, start) + updated + this.file.substring(end);
+      this.totalOffset += updated.length - block.length;
+      this.updateFile = true;
     }
   }
 

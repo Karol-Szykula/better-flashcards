@@ -6,6 +6,15 @@
  * on purpose - it usually signals genuine trouble worth seeing.
  */
 import "@testing-library/jest-dom";
+import { webcrypto } from "crypto";
+
+if (!globalThis.crypto?.subtle) {
+  Object.defineProperty(globalThis, "crypto", {
+    configurable: true,
+    value: webcrypto,
+    writable: true,
+  });
+}
 
 beforeEach(() => {
 // jest.spyOn(console, "warn").mockImplementation(() => undefined);
