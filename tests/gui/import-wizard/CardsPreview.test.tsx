@@ -9,7 +9,7 @@ import "obsidian-test-mocks/jest-setup";
 import { render, screen } from "@testing-library/react";
 import { Anki } from "src/services/anki";
 import { CardsPreview } from "src/gui/import-wizard/components/CardsPreview";
-import { AnkiConnectMock } from "../mocks/anki-connect";
+import { AnkiConnectMock } from "../../mocks/anki-connect";
 
 AnkiConnectMock.install();
 

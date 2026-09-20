@@ -11,8 +11,8 @@ import userEvent from "@testing-library/user-event";
 import { App } from "obsidian-test-mocks/obsidian";
 import type { Vault as ObsidianVault } from "obsidian";
 import { ImportWizard } from "src/gui/import-wizard/ImportWizard";
-import { createSettings } from "../helpers/settings";
-import { AnkiConnectMock } from "../mocks/anki-connect";
+import { createSettings } from "../../helpers/settings";
+import { AnkiConnectMock } from "../../mocks/anki-connect";
 
 AnkiConnectMock.install();
 

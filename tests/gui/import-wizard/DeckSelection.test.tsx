@@ -8,7 +8,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Anki } from "src/services/anki";
 import { DeckSelection } from "src/gui/import-wizard/components/DeckSelection";
-import { AnkiConnectMock } from "../mocks/anki-connect";
+import { AnkiConnectMock } from "../../mocks/anki-connect";
 
 AnkiConnectMock.install();
 

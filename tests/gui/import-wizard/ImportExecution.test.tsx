@@ -11,8 +11,8 @@ import type { Vault as ObsidianVault } from "obsidian";
 import { Anki } from "src/services/anki";
 import { ImportExecution } from "src/gui/import-wizard/components/ImportExecution";
 import type { ImportExecutionReport } from "src/services/import";
-import { createSettings } from "../helpers/settings";
-import { AnkiConnectMock } from "../mocks/anki-connect";
+import { createSettings } from "../../helpers/settings";
+import { AnkiConnectMock } from "../../mocks/anki-connect";
 
 AnkiConnectMock.install();
 
