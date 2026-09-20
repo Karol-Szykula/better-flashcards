@@ -31,8 +31,6 @@
   --flashcards-import-wizard-modal__model-section-margin:   0.75rem 0;
   --flashcards-import-wizard-modal__field-sample-max-width: 40%;
 
-  --flashcards-import-wizard-modal__preview-details-font-size:     0.9em;
-  --flashcards-import-wizard-modal__preview-details-margin:        0.25rem 0 0.25rem 1.5rem;
   --flashcards-import-wizard-modal__preview-pagination-gap:        0.5rem;
   --flashcards-import-wizard-modal__preview-pagination-margin-top: 0.5rem;
 }
@@ -226,11 +224,6 @@
 
 .flashcards-import-wizard-modal__preview-badge--new {
   color: var(--text-success);
-}
-
-.flashcards-import-wizard-modal__preview-details {
-  margin:    var(--flashcards-import-wizard-modal__preview-details-margin);
-  font-size: var(--flashcards-import-wizard-modal__preview-details-font-size);
 }
 
 .flashcards-import-wizard-modal__preview-pagination {

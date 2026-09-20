@@ -51,6 +51,5 @@ export const cardsPreviewClasses = {
     "flashcards-import-wizard-modal__preview-badge--updated",
   previewBadgeImported:
     "flashcards-import-wizard-modal__preview-badge--imported",
-  previewDetails: "flashcards-import-wizard-modal__preview-details",
   previewPagination: "flashcards-import-wizard-modal__preview-pagination",
 } as const;

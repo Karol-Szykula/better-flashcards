@@ -43,10 +43,6 @@ function noteSummary(note: AnkiNoteInfo): string {
   return normalizeCardText(front ?? firstField).slice(0, 80);
 }
 
-function ankiModified(mod: number | undefined): string {
-  return mod ? new Date(mod * 1000).toLocaleString() : "unknown";
-}
-
 function previewBadgeClass(status: NoteImportStatus): string {
   if (status === "new") {
     return cardsPreviewClasses.previewBadgeNew;
@@ -84,7 +80,6 @@ export function CardsPreview({
   const [rawNotes, setRawNotes] = useState<AnkiNoteInfo[] | null>(null);
   const [progress, setProgress] = useState("");
   const [loadError, setLoadError] = useState("");
-  const [expandedId, setExpandedId] = useState<number | null>(null);
   const page = currentPage;
   const setPage = onPageChange;
 
@@ -92,7 +87,6 @@ export function CardsPreview({
     let cancelled = false;
     setRawNotes(null);
     setPage(0);
-    setExpandedId(null);
     void (async () => {
       try {
         const notes = await fetchDeckNotes(anki, deckName, (fetched, total) => {
@@ -168,10 +162,6 @@ export function CardsPreview({
     page * previewPageSize,
     page * previewPageSize + previewPageSize
   );
-  const expandedItem =
-    expandedId === null
-      ? undefined
-      : classified.find((item) => item.note.noteId === expandedId);
   return (
     <div className={rootClassName}>
       <p>
@@ -193,14 +183,7 @@ export function CardsPreview({
                 }
                 type="checkbox"
               />,
-              <label
-                key="card"
-                onClick={() =>
-                  setExpandedId(
-                    expandedId === item.note.noteId ? null : item.note.noteId
-                  )
-                }
-              >
+              <label key="card">
                 <span>{noteSummary(item.note)}</span>
                 <span
                   className={mergeClasses(
@@ -222,17 +205,6 @@ export function CardsPreview({
           />
         ))}
       </List>
-      {expandedItem && (
-        <div className={cardsPreviewClasses.previewDetails}>
-          <p>Anki modified: {ankiModified(expandedItem.note.mod)}</p>
-          {Object.entries(expandedItem.note.fields).map(([name, content]) => (
-            <div key={name}>
-              <strong>{name}: </strong>
-              <span>{normalizeCardText(content.value).slice(0, 200)}</span>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
