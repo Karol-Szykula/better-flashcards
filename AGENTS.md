@@ -32,8 +32,9 @@
   CSS tokens, test data).
 - No `any`. Use `unknown` with narrowing, literal unions and shared
   domain types (`AnkiCardPayload`, `AnkiNoteInfo`, `VaultNoteIndex`).
-- Booleans read as questions: `isDisabled`, `isEmptyDeck`.
+- Booleans read as questions: `isDisabled`, `isEmptyDeck`, `isPaginationVisible`.
   Functions answering them name the subject: `isDeckEmpty`.
+  Boolean variables/props use `is` / `has` / `should` / `can` prefix (never `show` / `enable` / `display`).
 - Small single-purpose functions; orchestration reads as a list of calls.
 - Effects (`useEffect`) reference named loader functions, never inline lambdas.
 - English only, everywhere (code, tests, commit messages).
