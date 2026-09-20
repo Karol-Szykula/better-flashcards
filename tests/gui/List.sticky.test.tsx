@@ -5,7 +5,6 @@
  */
 import "obsidian-test-mocks/jest-setup";
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { List } from "src/gui/import-wizard/list/List";
 import { ListRow } from "src/gui/import-wizard/list/ListRow";
 
@@ -43,10 +42,3 @@ describe("List sticky header", () => {
   });
 });
 
-describe("CardsPreview pagination pinned", () => {
-  test("given a CardsPreview with multiple pages when rendered then pagination is visible at bottom", async () => {
-    // given - this test will be implemented after the component restructuring
-    // The pagination should be in a sticky footer at the bottom of the scrollable area
-    expect(true).toBe(true);
-  });
-});
