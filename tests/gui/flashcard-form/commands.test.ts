@@ -5,51 +5,14 @@
  */
 import "obsidian-test-mocks/jest-setup";
 import { App } from "obsidian-test-mocks/obsidian";
-import type {
-  Editor as ObsidianEditor,
-  Plugin as ObsidianPlugin,
-  Vault as ObsidianVault,
-} from "obsidian";
+import type { Vault as ObsidianVault } from "obsidian";
 import { waitFor } from "@testing-library/react";
 import {
+  createFlashcardFormNote,
   flashcardFormBlock,
   flashcardFormTemplate,
-  registerFlashcardFormCommands,
   uniqueFlashcardFormPath,
 } from "src/gui/flashcard-form/commands";
-
-interface RegisteredCommand {
-  callback?: () => void;
-  editorCallback?: (editor: ObsidianEditor) => void;
-  id: string;
-  name: string;
-}
-
-function registeredCommands(app: unknown): {
-  commands: RegisteredCommand[];
-  plugin: ObsidianPlugin;
-} {
-  const commands: RegisteredCommand[] = [];
-  const plugin = {
-    addCommand: (command: RegisteredCommand) => {
-      commands.push(command);
-    },
-    app,
-  } as unknown as ObsidianPlugin;
-  registerFlashcardFormCommands(plugin);
-  return { commands, plugin };
-}
-
-function commandById(
-  commands: RegisteredCommand[],
-  id: string
-): RegisteredCommand {
-  const command = commands.find((candidate) => candidate.id === id);
-  if (!command) {
-    throw new Error(`${id} not registered`);
-  }
-  return command;
-}
 
 function mockVault(): ObsidianVault {
   const app = App.createConfigured__({ files: {} });
@@ -110,23 +73,8 @@ describe("uniqueFlashcardFormPath", () => {
   });
 });
 
-describe("registerFlashcardFormCommands", () => {
-  test("given registration when inserted at cursor then writes the block", async () => {
-    // given
-    const { commands } = registeredCommands({});
-    const replaceSelection = jest.fn();
-    const editor = {
-      replaceSelection,
-    } as unknown as ObsidianEditor;
-
-    // when
-    commandById(commands, "insert-flashcard-form").editorCallback?.(editor);
-
-    // then
-    expect(replaceSelection).toHaveBeenCalledWith(flashcardFormBlock());
-  });
-
-  test("given registration when created as a new note then opens the note", async () => {
+describe("createFlashcardFormNote", () => {
+  test("given an empty vault when created then opens the new note", async () => {
     // given
     const vault = mockVault();
     const openFile = jest.fn();
@@ -134,26 +82,16 @@ describe("registerFlashcardFormCommands", () => {
       vault,
       workspace: { getLeaf: () => ({ openFile }) },
     };
-    const { commands } = registeredCommands(app);
 
     // when
-    commandById(commands, "new-flashcard-form-note").callback?.();
+    await createFlashcardFormNote(
+      app as unknown as Parameters<typeof createFlashcardFormNote>[0]
+    );
 
     // then
     await waitFor(() => {
       expect(vault.getAbstractFileByPath("Flashcard.md")).not.toBeNull();
     });
     expect(openFile).toHaveBeenCalledTimes(1);
-  });
-
-  test("given commands when registered then exposes both entries", async () => {
-    // given
-    const { commands } = registeredCommands({});
-
-    // when
-    const ids = commands.map((command) => command.id);
-
-    // then
-    expect(ids).toEqual(["insert-flashcard-form", "new-flashcard-form-note"]);
   });
 });

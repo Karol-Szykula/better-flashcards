@@ -11,7 +11,16 @@ import {
 } from "src/conf/constants";
 import { createFlashcardFormHandler } from "src/gui/flashcard-form/processor";
 import { registerFlashcardFormAutoPreview } from "src/gui/flashcard-form/auto-preview";
-import { registerFlashcardFormCommands } from "src/gui/flashcard-form/commands";
+import {
+  createFlashcardFormNote,
+  flashcardFormBlock,
+} from "src/gui/flashcard-form/commands";
+
+const generateCurrentFileCommandName = "Generate for the current file";
+const generateAllFilesCommandName = "Generate for all files in vault";
+const importDeckCommandName = "Import deck from Anki";
+const insertFlashcardFormCommandName = "Insert flashcard form";
+const newFlashcardFormNoteCommandName = "New flashcard form note";
 
 export default class ObsidianFlashcard extends Plugin {
   settings!: ISettings;
@@ -30,9 +39,36 @@ export default class ObsidianFlashcard extends Plugin {
 
     const statusBar = this.addStatusBarItem();
 
+    this.addRibbonIcon("flashcards", "Generate flashcards", () => {
+      const activeFile = this.app.workspace.getActiveFile();
+      if (activeFile) {
+        this.generateCards(activeFile);
+      } else {
+        new Notice("Open a file before");
+      }
+    });
+
+    this.addSettingTab(new SettingsTab(this.app, this));
+
+    this.registerFlashcardFormRendering();
+    this.registerCardCommands();
+    this.registerImportCommand();
+    this.registerFlashcardFormCommands();
+    this.startAnkiStatusPolling(anki, statusBar);
+  }
+
+  private registerFlashcardFormRendering(): void {
+    this.registerMarkdownCodeBlockProcessor(
+      flashcardFormLanguage,
+      createFlashcardFormHandler(this.app.vault)
+    );
+    registerFlashcardFormAutoPreview(this);
+  }
+
+  private registerCardCommands(): void {
     this.addCommand({
       id: "generate-flashcard-current-file",
-      name: "Generate for the current file",
+      name: generateCurrentFileCommandName,
       checkCallback: (checking: boolean) => {
         const activeFile = this.app.workspace.getActiveFile();
         if (activeFile) {
@@ -47,40 +83,43 @@ export default class ObsidianFlashcard extends Plugin {
 
     this.addCommand({
       id: "generate-flashcard-all-files",
-      name: "Generate for all files in vault",
+      name: generateAllFilesCommandName,
       callback: () => {
         void this.generateCardsForVault();
       },
     });
+  }
 
+  private registerImportCommand(): void {
     this.addCommand({
       id: "import-deck-from-anki",
-      name: "Import deck from Anki",
+      name: importDeckCommandName,
       callback: () => {
         new ImportModal(this.app, this.settings, () =>
           this.saveData(this.settings)
         ).setTitle("Import deck from Anki").open();
       },
     });
+  }
 
-    this.registerMarkdownCodeBlockProcessor(
-      flashcardFormLanguage,
-      createFlashcardFormHandler(this.app.vault)
-    );
-    registerFlashcardFormCommands(this);
-    registerFlashcardFormAutoPreview(this);
-
-    this.addRibbonIcon("flashcards", "Generate flashcards", () => {
-      const activeFile = this.app.workspace.getActiveFile();
-      if (activeFile) {
-        this.generateCards(activeFile);
-      } else {
-        new Notice("Open a file before");
-      }
+  private registerFlashcardFormCommands(): void {
+    this.addCommand({
+      id: "insert-flashcard-form",
+      name: insertFlashcardFormCommandName,
+      editorCallback: (editor) => {
+        editor.replaceSelection(flashcardFormBlock());
+      },
     });
+    this.addCommand({
+      id: "new-flashcard-form-note",
+      name: newFlashcardFormNoteCommandName,
+      callback: () => {
+        void createFlashcardFormNote(this.app);
+      },
+    });
+  }
 
-    this.addSettingTab(new SettingsTab(this.app, this));
-
+  private startAnkiStatusPolling(anki: Anki, statusBar: HTMLElement): void {
     this.registerInterval(
       window.setInterval(
         () =>
