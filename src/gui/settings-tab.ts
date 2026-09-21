@@ -69,18 +69,6 @@ export class SettingsTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Source support")
-      .setDesc(
-        "Add to every card the source, i.e. the link to the original card. NOTE: Old cards made without source support cannot be updated."
-      )
-      .addToggle((toggle) =>
-        toggle.setValue(plugin.settings.sourceSupport).onChange((value) => {
-          plugin.settings.sourceSupport = value;
-          plugin.saveData(plugin.settings);
-        })
-      );
-
-    new Setting(containerEl)
       .setName("Code highlight support")
       .setDesc("Add highlight of the code in Anki.")
       .addToggle((toggle) =>

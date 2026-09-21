@@ -1,13 +1,5 @@
 import { Anki } from "src/services/anki";
 import { Flashcard } from "src/entities/flashcard";
-import {
-  basicModelName,
-  basicReversedModelName,
-  clozeModelName,
-  codeDeckExtension,
-  sourceDeckExtension,
-  spacedModelName,
-} from "src/conf/constants";
 import { AnkiConnectMock } from "../mocks/anki-connect";
 import type { AnkiConnectRequest } from "../mocks/anki-connect";
 
@@ -252,73 +244,6 @@ describe("Anki - decks and notes lookup", () => {
       action: "changeDeck",
       params: { cards: movedCardIds, deck: targetDeck },
     });
-  });
-});
-
-describe("Anki - models", () => {
-  const modelCreationResults: unknown[] = [null, null, null, null];
-  const expectedModelNames = [
-    basicModelName,
-    basicReversedModelName,
-    clozeModelName,
-    spacedModelName,
-  ];
-
-  test("given no options when models created then builds four base models", async () => {
-    // given
-    AnkiConnectMock.respondWith(modelCreationResults);
-
-    // when
-    const created = await new Anki().createModels(false, false);
-
-    // then
-    expect(created).toEqual(modelCreationResults);
-    const actions = multiSubActions();
-    expect(actions).toHaveLength(4);
-    expect(actions.map((a) => a.action)).toEqual([
-      "createModel",
-      "createModel",
-      "createModel",
-      "createModel",
-    ]);
-    const names = actions.map((a) => (a.params["modelName"] as string) ?? "");
-    expect(names).toEqual(expectedModelNames);
-  });
-
-  test("given sourceSupport when models created then adds the Source field", async () => {
-    // given
-    AnkiConnectMock.respondWith(modelCreationResults);
-
-    // when
-    const created = await new Anki().createModels(true, false);
-
-    // then
-    expect(created).toEqual(modelCreationResults);
-    const actions = multiSubActions();
-    const names = actions.map((a) => (a.params["modelName"] as string) ?? "");
-    for (const name of names) {
-      expect(name).toContain(sourceDeckExtension);
-    }
-    const fields = actions[0].params["inOrderFields"] as string[];
-    expect(fields).toContain("Source");
-  });
-
-  test("given codeHighlightSupport when models created then doubles the models", async () => {
-    // given
-    const doubledResults = new Array(8).fill(null);
-    AnkiConnectMock.respondWith(doubledResults);
-
-    // when
-    const created = await new Anki().createModels(false, true);
-
-    // then
-    expect(created).toEqual(doubledResults);
-    const actions = multiSubActions();
-    expect(actions).toHaveLength(8);
-    const names = actions.map((a) => (a.params["modelName"] as string) ?? "");
-    expect(names.slice(4).every((n) => n.includes(codeDeckExtension))).toBe(
-      true,
-    );
   });
 });
 

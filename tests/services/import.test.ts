@@ -15,7 +15,6 @@ import { Regex } from "src/conf/regex";
 import { Clozecard } from "src/entities/clozecard";
 import { Flashcard } from "src/entities/flashcard";
 import { Inlinecard } from "src/entities/inlinecard";
-import { Spacedcard } from "src/entities/spacedcard";
 import { createSettings } from "../helpers/settings";
 import { setActiveDocument } from "../mocks/obsidian";
 import { basicModelName } from "src/conf/constants";
@@ -303,23 +302,6 @@ describe("buildNoteMarkdown", () => {
     expect(built.markdown).toContain("==hidden==");
   });
 
-  test("given a Prompt when built then returns spaced syntax", async () => {
-    // given
-    const note = {
-      noteId: 3,
-      modelName: "Spaced",
-      fields: { Prompt: { value: "<p>Recall this</p>" } },
-      tags: [] as string[],
-      cards: [9],
-    };
-
-    // when
-    const built = buildNoteMarkdown(note, { Prompt: "Prompt" }, flashcardsTag);
-
-    // then
-    expect(built.markdown).toBe("Recall this #card-spaced\n");
-  });
-
   test("given media references when built then extracts image and sound names", async () => {
     // given
     const note = {
@@ -445,25 +427,6 @@ describe("buildNoteMarkdown round-trip", () => {
     // then
     expect(cards).toHaveLength(1);
     expect(cards[0]).toBeInstanceOf(Clozecard);
-  });
-
-  test("given built spaced markdown when parsed back then returns one spaced card", async () => {
-    // given
-    const note = {
-      noteId: 3,
-      modelName: "Spaced",
-      fields: { Prompt: { value: "<p>Recall this</p>" } },
-      tags: [] as string[],
-      cards: [9],
-    };
-
-    // when
-    const built = buildNoteMarkdown(note, { Prompt: "Prompt" }, "card");
-    const cards = parseBuilt(built.markdown);
-
-    // then
-    expect(cards).toHaveLength(1);
-    expect(cards[0]).toBeInstanceOf(Spacedcard);
   });
 
   test("given a front-only note when built and parsed back then returns one card", async () => {

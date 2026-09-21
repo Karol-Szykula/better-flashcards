@@ -1,4 +1,3 @@
-import { codeDeckExtension } from "src/conf/constants";
 import { arraysEqual } from "src/utils";
 
 export type AnkiCardPayload = {
@@ -92,9 +91,5 @@ export abstract class Card {
     }
 
     return arraysEqual(card.tags, this.tags);
-  }
-
-  getCodeDeckNameExtension() {
-    return this.containsCode ? codeDeckExtension : "";
   }
 }

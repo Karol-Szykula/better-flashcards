@@ -47,10 +47,6 @@ export class CardsService {
     this.regex.update(this.settings);
     await this.anki.ping();
     await this.anki.storeCodeHighlightMedias();
-    await this.anki.createModels(
-      this.settings.sourceSupport,
-      this.settings.codeHighlightSupport
-    );
   }
 
   public async execute(activeFile: TFile, skipSetup = false): Promise<string[]> {
@@ -94,10 +90,6 @@ export class CardsService {
     try {
       if (!skipSetup) {
         await this.anki.storeCodeHighlightMedias();
-        await this.anki.createModels(
-          this.settings.sourceSupport,
-          this.settings.codeHighlightSupport
-        );
       }
       this.file = await this.app.vault.read(activeFile);
       if (!this.file.endsWith("\n")) {

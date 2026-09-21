@@ -23,7 +23,6 @@ export interface ISettings {
   inlineSeparator: string;
   inlineSeparatorReverse: string;
   lastSyncRev: number;
-  sourceSupport: boolean;
   syncedNoteHashes: Record<number, string>;
   syncedNoteMods: Record<number, number>;
 }

@@ -21,7 +21,6 @@ import {
   basicModelName,
   basicReversedModelName,
   clozeModelName,
-  spacedModelName,
 } from "src/conf/constants";
 
 export const fieldTargets = [
@@ -29,8 +28,6 @@ export const fieldTargets = [
   ankiFieldNames.back,
   ankiFieldNames.text,
   ankiFieldNames.extra,
-  ankiFieldNames.prompt,
-  ankiFieldNames.source,
   "Skip",
 ] as const;
 
@@ -48,7 +45,6 @@ const knownModelBases = [
   basicModelName,
   basicReversedModelName,
   clozeModelName,
-  spacedModelName,
 ];
 
 const discoverySampleSize = 100;
@@ -221,14 +217,6 @@ function buildClozeMarkdown(
   return `${body}${tagSuffix}\n`;
 }
 
-function buildSpacedMarkdown(
-  prompt: string,
-  flashcardsTag: string,
-  tagSuffix: string
-): string {
-  return `${prompt} #${flashcardsTag}-spaced${tagSuffix}\n`;
-}
-
 function buildFallbackMarkdown(
   front: string,
   flashcardsTag: string,
@@ -246,7 +234,6 @@ export function buildNoteMarkdown(
   const back = mappedFieldValue(note, mapping, ankiFieldNames.back);
   const text = mappedFieldValue(note, mapping, ankiFieldNames.text);
   const extra = mappedFieldValue(note, mapping, ankiFieldNames.extra);
-  const prompt = mappedFieldValue(note, mapping, ankiFieldNames.prompt);
   const media = noteMediaFilenames(note);
   const tagSuffix = noteTagSuffix(note.tags);
   if (front && back) {
@@ -254,12 +241,6 @@ export function buildNoteMarkdown(
   }
   if (text) {
     return { markdown: buildClozeMarkdown(text, extra, tagSuffix), media };
-  }
-  if (prompt) {
-    return {
-      markdown: buildSpacedMarkdown(prompt, flashcardsTag, tagSuffix),
-      media,
-    };
   }
   if (front) {
     return {
@@ -515,16 +496,12 @@ function buildYamlCardFields(
   const back = mappedFieldValue(note, mapping, ankiFieldNames.back);
   const text = mappedFieldValue(note, mapping, ankiFieldNames.text);
   const extra = mappedFieldValue(note, mapping, ankiFieldNames.extra);
-  const prompt = mappedFieldValue(note, mapping, ankiFieldNames.prompt);
   const tags = note.tags.join(" ");
   if (front && back) {
     return { back, front, tags };
   }
   if (text) {
     return { back: extra, front: text, tags };
-  }
-  if (prompt) {
-    return { back: "", front: prompt, tags };
   }
   if (front) {
     return { back: "", front, tags };

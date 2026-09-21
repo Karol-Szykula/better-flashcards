@@ -1,14 +1,9 @@
 import { ISettings } from "src/conf/settings";
 import * as showdown from "showdown";
 import { Regex } from "src/conf/regex";
-import {
-  ankiFieldNames,
-  clozeModelName,
-  spacedModelName,
-} from "src/conf/constants";
+import { ankiFieldNames, clozeModelName } from "src/conf/constants";
 import { Flashcard } from "../entities/flashcard";
 import { Inlinecard } from "src/entities/inlinecard";
-import { Spacedcard } from "src/entities/spacedcard";
 import { Clozecard } from "src/entities/clozecard";
 import { Yamlcard } from "src/entities/yamlcard";
 import { escapeMarkdown } from "src/utils";
@@ -58,7 +53,7 @@ export class Parser {
    * @param file The full content of the note.
    * @param deck The name of the target Anki deck.
    * @param vault The name of the Obsidian vault, used to build obsidian:// links.
-   * @param note The path of the note, used as the Source field when sourceSupport is on.
+   * @param note The path of the note, used to build obsidian:// links.
    * @param globalTags Tags added to every generated card.
    * @returns The list of flashcards found in the note, sorted by end offset.
    */
@@ -87,9 +82,6 @@ export class Parser {
     );
     cards = cards.concat(
       this.generateInlineCards(file, headings, deck, vault, note, globalTags)
-    );
-    cards = cards.concat(
-      this.generateSpacedCards(file, headings, deck, vault, note, globalTags)
     );
     cards = cards.concat(
       this.generateClozeCards(file, headings, deck, vault, note, globalTags)
@@ -189,16 +181,17 @@ export class Parser {
     return context;
   }
 
+  private isClozeModel(model: string): boolean {
+    return model === clozeModelName;
+  }
+
   private yamlCardFields(
     front: string,
     back: string,
     model: string
   ): Record<string, string> {
-    if (model.startsWith(clozeModelName)) {
-      return { Text: front, Extra: back };
-    }
-    if (model.startsWith(spacedModelName)) {
-      return { Prompt: front };
+    if (this.isClozeModel(model)) {
+      return { Text: front, [ankiFieldNames.backExtra]: back };
     }
     return { Front: front, Back: back };
   }
@@ -232,11 +225,11 @@ export class Parser {
         typeof block.extra["model"] === "string" && block.extra["model"]
           ? block.extra["model"]
           : "Basic";
-      const isClozeModel = model.startsWith(clozeModelName);
-      const ankiFront = isClozeModel
+      const cloze = this.isClozeModel(model);
+      const ankiFront = cloze
         ? this.obsidianClozeToAnki(block.front)
         : block.front;
-      const ankiBack = isClozeModel
+      const ankiBack = cloze
         ? this.obsidianClozeToAnki(block.back)
         : block.back;
       const htmlFront = this.parseLine(ankiFront, vault);
@@ -252,9 +245,6 @@ export class Parser {
       const blockStart = match.index;
       const blockEnd = blockStart + match[0].length;
       const cardFields = { ...fields };
-      if (this.settings.sourceSupport) {
-        cardFields[ankiFieldNames.source] = note;
-      }
       const containsCode = this.containsCode([htmlFront, htmlBack]);
       cards.push(
         new Yamlcard(
@@ -272,75 +262,6 @@ export class Parser {
         )
       );
     }
-    return cards;
-  }
-
-  /**
-   * Generates spaced repetition cards from lines like "Question #flashcards-spaced".
-   * The whole line before the tag becomes the card prompt.
-   * @returns The list of Spacedcards found in the file.
-   */
-  private generateSpacedCards(
-    file: string,
-    headings: RegExpMatchArray[],
-    deck: string,
-    vault: string,
-    note: string,
-    globalTags: string[] = []
-  ) {
-    const contextAware = this.settings.contextAwareMode;
-    const cards: Spacedcard[] = [];
-    const matches = [...file.matchAll(this.regex.cardsSpacedStyle)];
-
-    for (const match of matches) {
-      const reversed = false;
-      let headingLevel = -1;
-      if (match[1]) {
-        headingLevel =
-          match[1].trim().length !== 0 ? match[1].trim().length : -1;
-      }
-      // Match.index - 1 because otherwise in the context there will be even match[1], i.e. the question itself
-      const context = contextAware
-        ? this.getContext(headings, match.index - 1, headingLevel)
-        : "";
-
-      const originalPrompt = match[2].trim();
-      let prompt = contextAware
-        ? [...context, match[2].trim()].join(
-          `${this.settings.contextSeparator}`
-        )
-        : match[2].trim();
-      let medias: string[] = this.getImageLinks(prompt);
-      medias = medias.concat(this.getAudioLinks(prompt));
-      prompt = this.parseLine(prompt, vault);
-
-      const initialOffset = match.index;
-      const endingLine = match.index + match[0].length;
-      const tags: string[] = this.parseTags(match[4], globalTags);
-      const id: number = match[5] ? Number(match[5]) : -1;
-      const inserted: boolean = match[5] ? true : false;
-      const fields: Record<string, string> = { Prompt: prompt };
-      if (this.settings.sourceSupport) {
-        fields[ankiFieldNames.source] = note;
-      }
-      const containsCode = this.containsCode([prompt]);
-
-      const card = new Spacedcard(
-        id,
-        deck,
-        originalPrompt,
-        fields,
-        reversed,
-        initialOffset,
-        endingLine,
-        tags,
-        inserted,
-        medias,
-        containsCode
-      );
-      cards.push(card);
-    }
-
     return cards;
   }
 
@@ -422,9 +343,6 @@ export class Parser {
       const id: number = match[5] ? Number(match[5]) : -1;
       const inserted: boolean = match[5] ? true : false;
       const fields: Record<string, string> = { Text: clozeText, Extra: "" };
-      if (this.settings.sourceSupport) {
-        fields[ankiFieldNames.source] = note;
-      }
       const containsCode = this.containsCode([clozeText]);
 
       const card = new Clozecard(
@@ -502,9 +420,6 @@ export class Parser {
       const id: number = match[6] ? Number(match[6]) : -1;
       const inserted: boolean = match[6] ? true : false;
       const fields: Record<string, string> = { Front: question, Back: answer };
-      if (this.settings.sourceSupport) {
-        fields[ankiFieldNames.source] = note;
-      }
       const containsCode = this.containsCode([question, answer]);
 
       const card = new Inlinecard(
@@ -582,9 +497,6 @@ export class Parser {
       const id: number = match[6] ? Number(match[6]) : -1;
       const inserted: boolean = match[6] ? true : false;
       const fields: Record<string, string> = { Front: question, Back: answer };
-      if (this.settings.sourceSupport) {
-        fields[ankiFieldNames.source] = note;
-      }
       const containsCode = this.containsCode([question, answer]);
 
       const card = new Flashcard(

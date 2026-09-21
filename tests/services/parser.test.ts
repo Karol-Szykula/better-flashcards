@@ -5,14 +5,12 @@ import { createSettings } from "../helpers/settings";
 import { setActiveDocument } from "../mocks/obsidian";
 import { Flashcard } from "src/entities/flashcard";
 import { Inlinecard } from "src/entities/inlinecard";
-import { Spacedcard } from "src/entities/spacedcard";
 import { Clozecard } from "src/entities/clozecard";
 import { Yamlcard } from "src/entities/yamlcard";
 import type { YamlEngine } from "src/gui/flashcard-form/yaml";
 import {
   basicModelName,
   basicReversedModelName,
-  spacedModelName,
 } from "src/conf/constants";
 
 const jsonEngine: YamlEngine = {
@@ -137,27 +135,6 @@ describe("Parser - inline cards (Q :: A)", () => {
     expect(cards[0].inserted).toBe(true);
   });
 
-  test("given sourceSupport enabled when parsed then adds the Source field", () => {
-    // given
-    const vault = "Vault";
-    const note = "Note";
-    const settings = createSettings({ sourceSupport: true });
-    const parser = new Parser(new Regex(settings), settings);
-
-    // when
-    const cards = parser.generateFlashcards(
-      "Q :: A\n",
-      "Deck",
-      vault,
-      note
-    );
-
-    // then
-    expect(cards[0].fields["Source"]).toBe(
-      `<a href="obsidian://open?vault=${vault}&file=${note}.md">${note}</a>`
-    );
-  });
-
   test("given a card in a heading line when parsed then returns it", () => {
     // given
     const question = "Heading question";
@@ -224,30 +201,7 @@ describe("Parser - inline cards (Q :: A)", () => {
   });
 });
 
-describe("Parser - spaced repetition cards", () => {
-  test("given a spaced line when parsed then returns a spaced card", () => {
-    // given
-    const prompt = "What is Anki?";
-    const file = `${prompt} #card-spaced\n`;
-
-    // when
-    const cards = generate(file);
-
-    // then
-    expect(cards).toHaveLength(1);
-    expect(cards[0]).toBeInstanceOf(Spacedcard);
-    expect(cards[0].fields["Prompt"]).toContain("<p>" + prompt + "</p>");
-    expect(cards[0].modelName).toBe(spacedModelName);
-  });
-
-  test("given extra tags on a spaced line when parsed then collects them", () => {
-    // when
-    const cards = generate("Addition #card-spaced #math\n");
-
-    // then
-    expect(cards[0].tags).toEqual(["math"]);
-  });
-
+describe("Parser - lines without cards", () => {
   test("given a plain line when parsed then returns no cards", () => {
     // when
     const cards = generate("Just an ordinary sentence.\n");
@@ -437,7 +391,7 @@ describe("Parser - yaml flashcard-form blocks", () => {
   test("given a cloze form block when parsed then restores anki markers as html", () => {
     // given
     const file =
-      '```flashcard-form\n{"front": "Stolica to ==Paryż==", "back": "", "tags": "", "model": "Obsidian-cloze"}\n```\n';
+      '```flashcard-form\n{"front": "Stolica to ==Paryż==", "back": "", "tags": "", "model": "Cloze"}\n```\n';
 
     // when
     const cards = generate(file);

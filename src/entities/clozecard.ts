@@ -1,9 +1,4 @@
-import {
-  clozeModelName,
-  codeDeckExtension,
-  sourceDeckExtension,
-  ankiFieldNames,
-} from "src/conf/constants";
+import { clozeModelName } from "src/conf/constants";
 import { AnkiCardPayload, Card } from "src/entities/card";
 
 export class Clozecard extends Card {
@@ -34,12 +29,6 @@ export class Clozecard extends Card {
       containsCode
     );
     this.modelName = clozeModelName;
-    if (fields[ankiFieldNames.source]) {
-      this.modelName += sourceDeckExtension;
-    }
-    if (containsCode) {
-      this.modelName += codeDeckExtension;
-    }
   }
 
   public getCard(update = false): AnkiCardPayload {

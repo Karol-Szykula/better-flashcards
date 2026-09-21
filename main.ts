@@ -189,7 +189,6 @@ export default class ObsidianFlashcard extends Plugin {
   private getDefaultSettings(): ISettings {
     return {
       contextAwareMode: true,
-      sourceSupport: false,
       codeHighlightSupport: false,
       inlineID: false,
       contextSeparator: " > ",

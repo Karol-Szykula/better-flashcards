@@ -291,7 +291,7 @@ describe("CardsService - deckNeedToBeChanged", () => {
 });
 
 describe("CardsService - setup", () => {
-  test("given defaults when setup runs then pings Anki and creates models", async () => {
+  test("given defaults when setup runs then pings Anki and stores medias", async () => {
     // given
     const { cardsService } = setupService();
     AnkiConnectMock.respondWith(null);
@@ -305,7 +305,6 @@ describe("CardsService - setup", () => {
     expect(actions).toEqual([
       "version",
       "retrieveMediaFile",
-      "multi",
       "multi",
     ]);
   });
