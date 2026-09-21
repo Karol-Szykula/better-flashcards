@@ -1,7 +1,7 @@
 import type { App, Vault } from "obsidian";
 import { flashcardFormLanguage } from "src/conf/constants";
 
-const newFileBaseName = "Flashcard";
+const newFileBaseName = "Untitled";
 
 export function flashcardFormTemplate(): string {
   return 'front: ""\nback: ""\ntags: ""\n';
@@ -15,13 +15,18 @@ export function uniqueFlashcardFormPath(
   vault: Vault,
   baseName = newFileBaseName
 ): string {
-  let path = `${baseName}.md`;
-  let counter = 1;
-  while (vault.getAbstractFileByPath(path)) {
-    counter += 1;
-    path = `${baseName} ${counter}.md`;
+  const directPath = `${baseName}.md`;
+  if (!vault.getAbstractFileByPath(directPath)) {
+    return directPath;
   }
-  return path;
+  let counter = 1;
+  for (;;) {
+    const candidate = `${baseName} ${counter}.md`;
+    if (!vault.getAbstractFileByPath(candidate)) {
+      return candidate;
+    }
+    counter += 1;
+  }
 }
 
 export async function createFlashcardFormFile(app: App): Promise<void> {

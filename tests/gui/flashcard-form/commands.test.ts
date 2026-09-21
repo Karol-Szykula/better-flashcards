@@ -55,13 +55,13 @@ describe("uniqueFlashcardFormPath", () => {
     const path = uniqueFlashcardFormPath(vault);
 
     // then
-    expect(path).toBe("Flashcard.md");
+    expect(path).toBe("Untitled.md");
   });
 
   test("given taken names when resolved then appends the next counter", async () => {
     // given
     const app = App.createConfigured__({
-      files: { "Flashcard.md": "x", "Flashcard 2.md": "x" },
+      files: { "Untitled.md": "x", "Untitled 1.md": "x" },
     });
     const vault = app.vault as unknown as ObsidianVault;
 
@@ -69,7 +69,7 @@ describe("uniqueFlashcardFormPath", () => {
     const path = uniqueFlashcardFormPath(vault);
 
     // then
-    expect(path).toBe("Flashcard 3.md");
+    expect(path).toBe("Untitled 2.md");
   });
 });
 
@@ -90,7 +90,7 @@ describe("createFlashcardFormFile", () => {
 
     // then
     await waitFor(() => {
-      expect(vault.getAbstractFileByPath("Flashcard.md")).not.toBeNull();
+      expect(vault.getAbstractFileByPath("Untitled.md")).not.toBeNull();
     });
     expect(openFile).toHaveBeenCalledTimes(1);
   });
