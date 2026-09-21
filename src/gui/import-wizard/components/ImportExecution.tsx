@@ -3,6 +3,7 @@ import type { Vault } from "obsidian";
 import type { Anki } from "src/services/anki";
 import type { AnkiNoteInfo } from "src/entities/card";
 import type { FieldMapping as FieldMap } from "src/services/import";
+import type { VaultNoteIndex } from "src/services/vault";
 import {
   executeImport,
   type ImportExecutionReport,
@@ -22,6 +23,7 @@ export interface ImportExecutionProps {
   notes: AnkiNoteInfo[];
   onFinish: (report: ImportExecutionReport) => void;
   vault: Vault;
+  vaultNoteIndex?: VaultNoteIndex;
 }
 
 type ExecutionPhase = "running" | "done" | "failed";
@@ -36,6 +38,7 @@ export function ImportExecution({
   notes,
   onFinish,
   vault,
+  vaultNoteIndex,
 }: ImportExecutionProps): JSX.Element {
   const [phase, setPhase] = useState<ExecutionPhase>("running");
   const [progress, setProgress] = useState("");
@@ -57,6 +60,7 @@ export function ImportExecution({
           setProgress(`Importing… ${processed}/${total}`);
         },
         targetFolder: "",
+        vaultNoteIndex,
       });
       setReport(finished);
       setPhase("done");

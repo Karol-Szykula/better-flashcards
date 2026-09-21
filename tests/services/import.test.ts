@@ -743,6 +743,148 @@ describe("executeImport", () => {
     expect(written).toContain('"id":101');
   });
 
+  test("given a renamed front when executed then renames the file to match the content", async () => {
+    // given
+    const { vault } = executeWith({
+      "Languages/Old-front-101.md":
+        "```flashcard-form\nfront: Old front\nid: 101\n```\n",
+    });
+    const notes = [
+      {
+        ...basicImportNote(101, 200),
+        fields: {
+          Front: { value: "<p>New front</p>" },
+          Back: { value: "<p>4</p>" },
+        },
+      },
+    ];
+    const vaultNoteIndex = new Map([[101, "Languages/Old-front-101.md"]]);
+
+    // when
+    const report = await executeImport(
+      new Anki(),
+      vault,
+      {
+        deckName: "Languages",
+        notes,
+        decisions: { 101: true },
+        fieldMappings: { Basic: basicMapping() },
+        targetFolder: "",
+        flashcardsTag,
+        vaultNoteIndex,
+      },
+      jsonEngine
+    );
+
+    // then
+    expect(report).toMatchObject({ created: 0, overwritten: 1 });
+    expect(
+      vault.getAbstractFileByPath("Languages/Old-front-101.md")
+    ).toBeNull();
+    const written = await vault.read(
+      vault.getAbstractFileByPath(
+        "Languages/New-front-101.md"
+      ) as unknown as ObsidianTFile
+    );
+    expect(written).toContain("New front");
+    expect(written).toContain('"id":101');
+  });
+
+  test("given a taken new name when executed then renames with a suffix", async () => {
+    // given
+    const { vault } = executeWith({
+      "Languages/Old-front-101.md":
+        "```flashcard-form\nfront: Old front\nid: 101\n```\n",
+      "Languages/New-front-101.md": "someone else's notes\n",
+    });
+    const notes = [
+      {
+        ...basicImportNote(101, 200),
+        fields: {
+          Front: { value: "<p>New front</p>" },
+          Back: { value: "<p>4</p>" },
+        },
+      },
+    ];
+    const vaultNoteIndex = new Map([[101, "Languages/Old-front-101.md"]]);
+
+    // when
+    const report = await executeImport(
+      new Anki(),
+      vault,
+      {
+        deckName: "Languages",
+        notes,
+        decisions: { 101: true },
+        fieldMappings: { Basic: basicMapping() },
+        targetFolder: "",
+        flashcardsTag,
+        vaultNoteIndex,
+      },
+      jsonEngine
+    );
+
+    // then
+    expect(report).toMatchObject({ created: 0, overwritten: 1 });
+    const untouched = await vault.read(
+      vault.getAbstractFileByPath(
+        "Languages/New-front-101.md"
+      ) as unknown as ObsidianTFile
+    );
+    expect(untouched).toBe("someone else's notes\n");
+    const written = await vault.read(
+      vault.getAbstractFileByPath(
+        "Languages/New-front-101-1.md"
+      ) as unknown as ObsidianTFile
+    );
+    expect(written).toContain("New front");
+  });
+
+  test("given a stale index entry when executed then writes a fresh file instead", async () => {
+    // given
+    const { vault } = executeWith({
+      "Languages/Old-front-101.md": "unrelated notes without an id\n",
+    });
+    const notes = [
+      {
+        ...basicImportNote(101, 200),
+        fields: {
+          Front: { value: "<p>New front</p>" },
+          Back: { value: "<p>4</p>" },
+        },
+      },
+    ];
+    const vaultNoteIndex = new Map([[101, "Languages/Old-front-101.md"]]);
+
+    // when
+    const report = await executeImport(
+      new Anki(),
+      vault,
+      {
+        deckName: "Languages",
+        notes,
+        decisions: { 101: true },
+        fieldMappings: { Basic: basicMapping() },
+        targetFolder: "",
+        flashcardsTag,
+        vaultNoteIndex,
+      },
+      jsonEngine
+    );
+
+    // then
+    expect(report).toMatchObject({ created: 1, overwritten: 0 });
+    const untouched = await vault.read(
+      vault.getAbstractFileByPath(
+        "Languages/Old-front-101.md"
+      ) as unknown as ObsidianTFile
+    );
+    expect(untouched).toBe("unrelated notes without an id\n");
+    expect(
+      vault.getAbstractFileByPath("Languages/New-front-101.md")
+    ).not.toBeNull();
+  });
+
   test("given identical fields when executed then writes separate files per note", async () => {
     // given
     const { vault } = executeWith({});

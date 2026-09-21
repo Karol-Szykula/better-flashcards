@@ -214,6 +214,7 @@ export function ImportWizard({
             notes={deckNotes}
             onFinish={finishImport}
             vault={vault}
+            vaultNoteIndex={vaultNoteIndex}
           />
         )}
       <Footer

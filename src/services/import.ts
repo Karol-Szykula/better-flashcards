@@ -356,6 +356,85 @@ function yamlNoteIdInContent(content: string, noteId: number): boolean {
   return pattern.test(content);
 }
 
+async function resolveExistingNotePath(
+  vault: Vault,
+  vaultNoteIndex: VaultNoteIndex | undefined,
+  noteId: number,
+  takenPaths: Set<string>
+): Promise<string | null> {
+  const indexedPath = vaultNoteIndex?.get(noteId);
+  if (!indexedPath || takenPaths.has(indexedPath)) {
+    return null;
+  }
+  const existing = await vault.getAbstractFileByPath(indexedPath);
+  if (!(existing instanceof TFile)) {
+    return null;
+  }
+  const content = await vault.read(existing);
+  if (!yamlNoteIdInContent(content, noteId)) {
+    return null;
+  }
+  takenPaths.add(indexedPath);
+  return indexedPath;
+}
+
+function parentFolderOf(path: string): string {
+  const slash = path.lastIndexOf("/");
+  return slash < 0 ? "" : path.slice(0, slash);
+}
+
+async function resolveRenameTargetPath(
+  vault: Vault,
+  desiredPath: string,
+  takenPaths: Set<string>,
+  selfPath: string
+): Promise<string> {
+  const dotIndex = desiredPath.lastIndexOf(".");
+  const stem = desiredPath.slice(0, dotIndex);
+  const extension = desiredPath.slice(dotIndex);
+  let candidate = desiredPath;
+  let suffix = 0;
+  for (;;) {
+    if (!takenPaths.has(candidate)) {
+      const existing = await vault.getAbstractFileByPath(candidate);
+      if (!existing || existing.path === selfPath) {
+        break;
+      }
+    }
+    suffix += 1;
+    candidate = `${stem}-${suffix}${extension}`;
+  }
+  takenPaths.add(candidate);
+  return candidate;
+}
+
+async function renameIndexedNoteFile(
+  vault: Vault,
+  indexedPath: string,
+  freshFileName: string,
+  takenPaths: Set<string>
+): Promise<{ file: TFile; path: string } | null> {
+  const indexedFile = await vault.getAbstractFileByPath(indexedPath);
+  if (!(indexedFile instanceof TFile)) {
+    return null;
+  }
+  const parent = parentFolderOf(indexedPath);
+  const desiredPath = parent ? `${parent}/${freshFileName}` : freshFileName;
+  if (desiredPath === indexedPath) {
+    return { file: indexedFile, path: indexedPath };
+  }
+  const targetPath = await resolveRenameTargetPath(
+    vault,
+    desiredPath,
+    takenPaths,
+    indexedPath
+  );
+  await vault.rename(indexedFile, targetPath);
+  takenPaths.delete(indexedPath);
+  takenPaths.add(targetPath);
+  return { file: indexedFile, path: targetPath };
+}
+
 export async function resolveNoteFilePath(
   vault: Vault,
   folder: string,
@@ -395,6 +474,7 @@ export interface ExecuteImportRequest {
   notes: AnkiNoteInfo[];
   onProgress?: (processed: number, total: number) => void;
   targetFolder: string;
+  vaultNoteIndex?: VaultNoteIndex;
 }
 
 export interface ImportExecutionReport {
@@ -525,16 +605,53 @@ export async function executeImport(
       },
       yaml
     );
-    const targetPath = await resolveNoteFilePath(
+    const freshFileName = yamlNoteFileName(
+      request.deckName,
+      fields.front,
+      item.note.noteId
+    );
+    const indexedPath = await resolveExistingNotePath(
       vault,
-      folder,
-      yamlNoteFileName(request.deckName, fields.front, item.note.noteId),
+      request.vaultNoteIndex,
       item.note.noteId,
       takenPaths
     );
-    const existing = await vault.getAbstractFileByPath(targetPath);
-    if (existing instanceof TFile) {
-      await vault.modify(existing, content);
+    let targetPath: string;
+    let existingFile: TFile | null = null;
+    if (indexedPath) {
+      const renamed = await renameIndexedNoteFile(
+        vault,
+        indexedPath,
+        freshFileName,
+        takenPaths
+      );
+      if (renamed) {
+        targetPath = renamed.path;
+        existingFile = renamed.file;
+      } else {
+        targetPath = await resolveNoteFilePath(
+          vault,
+          folder,
+          freshFileName,
+          item.note.noteId,
+          takenPaths
+        );
+      }
+    } else {
+      targetPath = await resolveNoteFilePath(
+        vault,
+        folder,
+        freshFileName,
+        item.note.noteId,
+        takenPaths
+      );
+      const existing = await vault.getAbstractFileByPath(targetPath);
+      if (existing instanceof TFile) {
+        existingFile = existing;
+      }
+    }
+    if (existingFile) {
+      await vault.modify(existingFile, content);
       report.overwritten += 1;
     } else {
       await vault.create(targetPath, content);
