@@ -400,8 +400,8 @@ describe("Parser - yaml flashcard-form blocks", () => {
     // then
     expect(cards).toHaveLength(1);
     expect(cards[0]).toBeInstanceOf(Yamlcard);
-    expect(cards[0].fields["Front"]).toBe("Q");
-    expect(cards[0].fields["Back"]).toBe("A");
+    expect(cards[0].fields["Front"]).toContain("Q");
+    expect(cards[0].fields["Back"]).toContain("A");
     expect(cards[0].tags).toEqual(["math"]);
     expect(cards[0].id).toBe(-1);
     expect(cards[0].inserted).toBe(false);
@@ -432,6 +432,20 @@ describe("Parser - yaml flashcard-form blocks", () => {
     // then
     expect(cards).toHaveLength(1);
     expect(cards[0]).not.toBeInstanceOf(Yamlcard);
+  });
+
+  test("given a cloze form block when parsed then restores anki markers as html", () => {
+    // given
+    const file =
+      '```flashcard-form\n{"front": "Stolica to ==Paryż==", "back": "", "tags": "", "model": "Obsidian-cloze"}\n```\n';
+
+    // when
+    const cards = generate(file);
+
+    // then
+    expect(cards).toHaveLength(1);
+    expect(cards[0]).toBeInstanceOf(Yamlcard);
+    expect(cards[0].fields["Text"]).toContain("{{c1::Paryż}}");
   });
 });
 

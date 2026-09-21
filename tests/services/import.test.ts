@@ -344,6 +344,48 @@ describe("buildNoteMarkdown", () => {
     expect(built.media).toEqual(["a.png", "b.mp3"]);
   });
 
+  test("given div-wrapped html when built then unwraps it to plain text", async () => {
+    // given
+    const note = {
+      ...basicNote(),
+      fields: {
+        Front: { value: "<div>What is 2+2?</div>" },
+        Back: { value: "<p>4</p>" },
+      },
+    };
+
+    // when
+    const built = buildNoteMarkdown(
+      note,
+      { Front: "Front", Back: "Back" },
+      flashcardsTag
+    );
+
+    // then
+    expect(built.markdown).toBe("What is 2+2? :: 4\n");
+  });
+
+  test("given line breaks and comments when built then converts and drops them", async () => {
+    // given
+    const note = {
+      ...basicNote(),
+      fields: {
+        Front: { value: "<p>Question</p>" },
+        Back: { value: "Answer:<br>\n\n- item\n\n<!-- -->" },
+      },
+    };
+
+    // when
+    const built = buildNoteMarkdown(
+      note,
+      { Front: "Front", Back: "Back" },
+      flashcardsTag
+    );
+
+    // then
+    expect(built.markdown).toBe("Question :: Answer:\n\n- item\n");
+  });
+
   test("given only skipped fields when built then returns empty markdown", async () => {
     // when
     const built = buildNoteMarkdown(

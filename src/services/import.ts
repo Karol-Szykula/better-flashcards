@@ -168,6 +168,21 @@ function ankiClozeToObsidian(text: string): string {
   return text.replace(/\{\{c\d+::([\s\S]*?)\}\}/g, "==$1==");
 }
 
+function unescapeListMarker(line: string, indent: string): string {
+  return indent.length <= 1 ? "- " : `${indent}- `;
+}
+
+function cleanConvertedMarkdown(markdown: string): string {
+  return markdown
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/?(div|p)[^>]*>/gi, "\n")
+    .replace(/<\/?span[^>]*>/gi, "")
+    .replace(/^( *)\\- /gm, unescapeListMarker)
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 function mappedFieldValue(
   note: AnkiNoteInfo,
   mapping: FieldMapping,
@@ -175,7 +190,7 @@ function mappedFieldValue(
 ): string {
   const field = Object.keys(mapping).find((name) => mapping[name] === target);
   const html = field ? note.fields[field]?.value ?? "" : "";
-  return markdownConverter.makeMarkdown(html).trim();
+  return cleanConvertedMarkdown(markdownConverter.makeMarkdown(html));
 }
 
 function noteMediaFilenames(note: AnkiNoteInfo): string[] {

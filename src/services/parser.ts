@@ -203,6 +203,14 @@ export class Parser {
     return { Front: front, Back: back };
   }
 
+  private obsidianClozeToAnki(text: string): string {
+    let counter = 0;
+    return text.replace(/==(.+?)==/g, (_match, content: string) => {
+      counter += 1;
+      return `{{c${counter}::${content}}}`;
+    });
+  }
+
   private generateCardsFromYamlBlocks(
     file: string,
     deck: string,
@@ -224,7 +232,16 @@ export class Parser {
         typeof block.extra["model"] === "string" && block.extra["model"]
           ? block.extra["model"]
           : "Basic";
-      const fields = this.yamlCardFields(block.front, block.back, model);
+      const isClozeModel = model.startsWith(clozeModelName);
+      const ankiFront = isClozeModel
+        ? this.obsidianClozeToAnki(block.front)
+        : block.front;
+      const ankiBack = isClozeModel
+        ? this.obsidianClozeToAnki(block.back)
+        : block.back;
+      const htmlFront = this.parseLine(ankiFront, vault);
+      const htmlBack = this.parseLine(ankiBack, vault);
+      const fields = this.yamlCardFields(htmlFront, htmlBack, model);
       const cardTags = block.tags
         .split(" ")
         .filter((tag) => tag.length > 0)
@@ -238,6 +255,7 @@ export class Parser {
       if (this.settings.sourceSupport) {
         cardFields[ankiFieldNames.source] = note;
       }
+      const containsCode = this.containsCode([htmlFront, htmlBack]);
       cards.push(
         new Yamlcard(
           block.id ?? -1,
@@ -249,7 +267,8 @@ export class Parser {
           cardTags,
           block.id !== undefined,
           medias,
-          model
+          model,
+          containsCode
         )
       );
     }

@@ -196,6 +196,19 @@ describe("yamlNoteFileName", () => {
     expect(fileName).toBe("Wait-what-1111111111111.md");
   });
 
+  test("given leftover html when named then strips the tags", async () => {
+    // given
+    const deckName = "Angielski";
+    const front = "<div>Jak tylko spróbuję</div>";
+    const noteId = 1111111111111;
+
+    // when
+    const fileName = yamlNoteFileName(deckName, front, noteId);
+
+    // then
+    expect(fileName).toBe("Jak-tylko-spróbuję-1111111111111.md");
+  });
+
   test("given a long multibyte front when named then truncates by bytes without splitting characters", async () => {
     // given
     const deckName = "Angielski";

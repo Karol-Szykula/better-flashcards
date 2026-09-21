@@ -31,6 +31,10 @@ function stripMediaReferences(text: string): string {
     .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1");
 }
 
+function stripHtmlTags(text: string): string {
+  return text.replace(/<[^>]*>/g, "");
+}
+
 function stripClozeMarkers(text: string): string {
   return text.replace(/\{\{c\d+::([\s\S]*?)\}\}/g, "$1");
 }
@@ -147,7 +151,9 @@ export function yamlNoteFileName(
   noteId: number
 ): string {
   const cleaned = truncateToBytes(
-    sanitizeFileNamePart(stripClozeMarkers(stripMediaReferences(front))),
+    sanitizeFileNamePart(
+      stripHtmlTags(stripClozeMarkers(stripMediaReferences(front)))
+    ),
     maxFileNamePartBytes
   ).replace(/-+$/, "");
   const stem = cleaned || sanitizeFileNamePart(deckName) || "note";

@@ -1,4 +1,4 @@
-import { basicModelName } from "src/conf/constants";
+import { basicModelName, codeDeckExtension } from "src/conf/constants";
 import { Flashcard } from "src/entities/flashcard";
 
 export class Yamlcard extends Flashcard {
@@ -12,7 +12,8 @@ export class Yamlcard extends Flashcard {
     tags: string[] = [],
     inserted = false,
     mediaNames: string[] = [],
-    modelName: string = basicModelName
+    modelName: string = basicModelName,
+    containsCode = false
   ) {
     super(
       id,
@@ -25,9 +26,12 @@ export class Yamlcard extends Flashcard {
       tags,
       inserted,
       mediaNames,
-      false
+      containsCode
     );
     this.modelName = modelName || basicModelName;
+    if (containsCode && !this.modelName.endsWith(codeDeckExtension)) {
+      this.modelName += codeDeckExtension;
+    }
   }
 
   public getIdFormat(): string {
