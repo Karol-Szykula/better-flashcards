@@ -16,12 +16,55 @@ export function createFlashcardFencePattern(): RegExp {
   return /```flashcard-form[^\n]*\n([\s\S]*?)\n```/g;
 }
 
+const maxFileNamePartBytes = 200;
+
 function sanitizeFileNamePart(part: string): string {
   return part
     .split("::")
     .join("-")
-    .replace(/[/\\:*?"<>|]/g, "-")
-    .trim();
+    .replace(/[/\\:*?"<>|#^[\]]/g, "-")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function stripMediaReferences(text: string): string {
+  return text
+    .replace(/!\[\[[^\]]*\]\]/g, "")
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1");
+}
+
+function stripClozeMarkers(text: string): string {
+  return text.replace(/\{\{c\d+::([\s\S]*?)\}\}/g, "$1");
+}
+
+function utf8CharLength(code: number): number {
+  if (code < 0x80) {
+    return 1;
+  }
+  if (code < 0x800) {
+    return 2;
+  }
+  if (code < 0x10000) {
+    return 3;
+  }
+  return 4;
+}
+
+function truncateToBytes(input: string, maxBytes: number): string {
+  let bytes = 0;
+  let end = 0;
+  while (end < input.length) {
+    const code = input.codePointAt(end) ?? 0;
+    const length = utf8CharLength(code);
+    if (bytes + length > maxBytes) {
+      break;
+    }
+    bytes += length;
+    end += code > 0xffff ? 2 : 1;
+  }
+  return input.slice(0, end);
 }
 
 export function extractYamlFlashcardBlocks(content: string): string[] {
@@ -104,14 +147,15 @@ export function serializeYamlFlashcard(
 
 export function yamlNoteFileName(
   deckName: string,
-  tags: string[],
+  front: string,
   noteId: number
 ): string {
-  const deckPart = sanitizeFileNamePart(deckName) || "note";
-  const tagParts = tags
-    .map((tag) => sanitizeFileNamePart(tag))
-    .filter((part) => part.length > 0);
-  return `${[deckPart, ...tagParts].join("-")}-${noteId}.md`;
+  const cleaned = truncateToBytes(
+    sanitizeFileNamePart(stripClozeMarkers(stripMediaReferences(front))),
+    maxFileNamePartBytes
+  ).replace(/-+$/, "");
+  const stem = cleaned || sanitizeFileNamePart(deckName) || "note";
+  return `${stem}-${noteId}.md`;
 }
 
 export async function readYamlFlashcards(

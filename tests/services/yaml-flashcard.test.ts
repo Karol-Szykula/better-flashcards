@@ -118,27 +118,27 @@ describe("serializeYamlFlashcard", () => {
 });
 
 describe("yamlNoteFileName", () => {
-  test("given deck tags and id when named then joins them with dashes", async () => {
-    // given
-    const deckName = "Angielski::words";
-    const tags = ["endings", "basics"];
-    const noteId = 1111111111111;
-
-    // when
-    const fileName = yamlNoteFileName(deckName, tags, noteId);
-
-    // then
-    expect(fileName).toBe("Angielski-words-endings-basics-1111111111111.md");
-  });
-
-  test("given empty tags when named then skips the tag segment", async () => {
+  test("given front text when named then joins front and note id", async () => {
     // given
     const deckName = "Angielski";
-    const tags: string[] = [];
+    const front = "What is 2+2?";
     const noteId = 1111111111111;
 
     // when
-    const fileName = yamlNoteFileName(deckName, tags, noteId);
+    const fileName = yamlNoteFileName(deckName, front, noteId);
+
+    // then
+    expect(fileName).toBe("What-is-2+2-1111111111111.md");
+  });
+
+  test("given empty front when named then falls back to the deck name", async () => {
+    // given
+    const deckName = "Angielski";
+    const front = "";
+    const noteId = 1111111111111;
+
+    // when
+    const fileName = yamlNoteFileName(deckName, front, noteId);
 
     // then
     expect(fileName).toBe("Angielski-1111111111111.md");
@@ -147,14 +147,53 @@ describe("yamlNoteFileName", () => {
   test("given illegal characters when named then sanitizes them", async () => {
     // given
     const deckName = "Angielski";
-    const tags = ["a/b", "c:d"];
+    const front = "a/b:c*d?e";
     const noteId = 1111111111111;
 
     // when
-    const fileName = yamlNoteFileName(deckName, tags, noteId);
+    const fileName = yamlNoteFileName(deckName, front, noteId);
 
     // then
-    expect(fileName).toBe("Angielski-a-b-c-d-1111111111111.md");
+    expect(fileName).toBe("a-b-c-d-e-1111111111111.md");
+  });
+
+  test("given media references when named then strips them", async () => {
+    // given
+    const deckName = "Angielski";
+    const front = "Look ![[Languages/attachments/a.png]]";
+    const noteId = 1111111111111;
+
+    // when
+    const fileName = yamlNoteFileName(deckName, front, noteId);
+
+    // then
+    expect(fileName).toBe("Look-1111111111111.md");
+  });
+
+  test("given cloze markers when named then keeps only the inner text", async () => {
+    // given
+    const deckName = "Angielski";
+    const front = "Stolica to {{c1::Paryż}}";
+    const noteId = 1111111111111;
+
+    // when
+    const fileName = yamlNoteFileName(deckName, front, noteId);
+
+    // then
+    expect(fileName).toBe("Stolica-to-Paryż-1111111111111.md");
+  });
+
+  test("given a long multibyte front when named then truncates by bytes without splitting characters", async () => {
+    // given
+    const deckName = "Angielski";
+    const front = "ą".repeat(150);
+    const noteId = 1111111111111;
+
+    // when
+    const fileName = yamlNoteFileName(deckName, front, noteId);
+
+    // then
+    expect(fileName).toBe(`${"ą".repeat(100)}-1111111111111.md`);
   });
 });
 

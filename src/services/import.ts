@@ -337,15 +337,6 @@ export async function discoverDeckModels(
   return groupNotesByModel(notes);
 }
 
-export function noteTitle(deckName: string, noteId: number): string {
-  const deckPart = deckName
-    .split("::")
-    .join("-")
-    .replace(/[/\\:*?"<>|]/g, "-")
-    .trim();
-  return `${deckPart || "note"}-${noteId}`;
-}
-
 export function deckFolder(deckName: string, targetFolder: string): string {
   const deckPath = deckName.split("::").join("/");
   return targetFolder ? `${targetFolder}/${deckPath}` : deckPath;
@@ -537,7 +528,7 @@ export async function executeImport(
     const targetPath = await resolveNoteFilePath(
       vault,
       folder,
-      yamlNoteFileName(request.deckName, item.note.tags, item.note.noteId),
+      yamlNoteFileName(request.deckName, fields.front, item.note.noteId),
       item.note.noteId,
       takenPaths
     );
