@@ -12,7 +12,7 @@ import {
 import { createFlashcardFormHandler } from "src/gui/flashcard-form/processor";
 import { registerFlashcardFormAutoPreview } from "src/gui/flashcard-form/auto-preview";
 import {
-  createFlashcardFormNote,
+  createFlashcardFormFile,
   flashcardFormBlock,
 } from "src/gui/flashcard-form/commands";
 
@@ -20,7 +20,7 @@ const generateCurrentFileCommandName = "Generate for the current file";
 const generateAllFilesCommandName = "Generate for all files in vault";
 const importDeckCommandName = "Import deck from Anki";
 const insertFlashcardFormCommandName = "Insert flashcard form";
-const newFlashcardFormNoteCommandName = "New flashcard form note";
+const newFlashcardFileCommandName = "New flashcard file";
 
 export default class ObsidianFlashcard extends Plugin {
   settings!: ISettings;
@@ -111,10 +111,10 @@ export default class ObsidianFlashcard extends Plugin {
       },
     });
     this.addCommand({
-      id: "new-flashcard-form-note",
-      name: newFlashcardFormNoteCommandName,
+      id: "new-flashcard-form-file",
+      name: newFlashcardFileCommandName,
       callback: () => {
-        void createFlashcardFormNote(this.app);
+        void createFlashcardFormFile(this.app);
       },
     });
   }

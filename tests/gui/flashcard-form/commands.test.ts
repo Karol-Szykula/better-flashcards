@@ -8,7 +8,7 @@ import { App } from "obsidian-test-mocks/obsidian";
 import type { Vault as ObsidianVault } from "obsidian";
 import { waitFor } from "@testing-library/react";
 import {
-  createFlashcardFormNote,
+  createFlashcardFormFile,
   flashcardFormBlock,
   flashcardFormTemplate,
   uniqueFlashcardFormPath,
@@ -73,8 +73,8 @@ describe("uniqueFlashcardFormPath", () => {
   });
 });
 
-describe("createFlashcardFormNote", () => {
-  test("given an empty vault when created then opens the new note", async () => {
+describe("createFlashcardFormFile", () => {
+  test("given an empty vault when created then opens the new file", async () => {
     // given
     const vault = mockVault();
     const openFile = jest.fn();
@@ -84,8 +84,8 @@ describe("createFlashcardFormNote", () => {
     };
 
     // when
-    await createFlashcardFormNote(
-      app as unknown as Parameters<typeof createFlashcardFormNote>[0]
+    await createFlashcardFormFile(
+      app as unknown as Parameters<typeof createFlashcardFormFile>[0]
     );
 
     // then
