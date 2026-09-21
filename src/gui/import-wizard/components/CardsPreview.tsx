@@ -43,6 +43,10 @@ function noteSummary(note: AnkiNoteInfo): string {
   return normalizeCardText(front ?? firstField).slice(0, 80);
 }
 
+function previewRowRank(item: ClassifiedNote): number {
+  return item.status === "imported" ? 1 : 0;
+}
+
 function previewBadgeClass(status: NoteImportStatus): string {
   if (status === "new") {
     return cardsPreviewClasses.previewBadgeNew;
@@ -111,13 +115,15 @@ export function CardsPreview({
 
   useEffect(loadPreviewNotes, [anki, deckName]);
 
-  const classified = useMemo(
-    () =>
-      rawNotes
-        ? classifyDeckNotes(rawNotes, vaultNoteIndex, syncState)
-        : null,
-    [rawNotes, vaultNoteIndex, syncState]
-  );
+  const classified = useMemo(() => {
+    if (!rawNotes) {
+      return null;
+    }
+    const notes = classifyDeckNotes(rawNotes, vaultNoteIndex, syncState);
+    return notes.sort(
+      (first, second) => previewRowRank(first) - previewRowRank(second)
+    );
+  }, [rawNotes, vaultNoteIndex, syncState]);
 
   const applyDefaultCardsSelectedToImport = () => {
     if (!classified) {

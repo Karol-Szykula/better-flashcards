@@ -128,7 +128,7 @@ describe("yamlNoteFileName", () => {
     const fileName = yamlNoteFileName(deckName, front, noteId);
 
     // then
-    expect(fileName).toBe("What-is-2+2-1111111111111.md");
+    expect(fileName).toBe("What-is-2-2-1111111111111.md");
   });
 
   test("given empty front when named then falls back to the deck name", async () => {
@@ -181,6 +181,19 @@ describe("yamlNoteFileName", () => {
 
     // then
     expect(fileName).toBe("Stolica-to-Paryż-1111111111111.md");
+  });
+
+  test("given an ellipsis when named then removes it", async () => {
+    // given
+    const deckName = "Angielski";
+    const front = "Wait... what?";
+    const noteId = 1111111111111;
+
+    // when
+    const fileName = yamlNoteFileName(deckName, front, noteId);
+
+    // then
+    expect(fileName).toBe("Wait-what-1111111111111.md");
   });
 
   test("given a long multibyte front when named then truncates by bytes without splitting characters", async () => {

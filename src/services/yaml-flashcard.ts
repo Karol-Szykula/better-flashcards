@@ -20,11 +20,7 @@ const maxFileNamePartBytes = 200;
 
 function sanitizeFileNamePart(part: string): string {
   return part
-    .split("::")
-    .join("-")
-    .replace(/[/\\:*?"<>|#^[\]]/g, "-")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
     .replace(/^-+|-+$/g, "");
 }
 

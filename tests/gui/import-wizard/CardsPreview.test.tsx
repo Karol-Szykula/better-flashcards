@@ -88,8 +88,10 @@ describe("CardsPreview", () => {
 
     // then
     expect(boxes).toHaveLength(3);
-    expect(boxes[0]).toBeDisabled();
-    expect(boxes[0]).not.toBeChecked();
+    expect(boxes[0]).not.toBeDisabled();
+    expect(boxes[1]).not.toBeDisabled();
+    expect(boxes[2]).toBeDisabled();
+    expect(boxes[2]).not.toBeChecked();
     expect(
       importedSummary.closest(
         "div.flashcards-import-wizard-modal__preview-row--imported"
@@ -116,5 +118,21 @@ describe("CardsPreview", () => {
       102: true,
       103: true,
     });
+  });
+
+  test("given an imported note first when preview renders then lists it after new and updated notes", async () => {
+    // given
+    respondWithPreviewNotes();
+    renderPreview();
+
+    // when
+    const summaries = await screen.findAllByText(/card$/);
+
+    // then
+    expect(summaries.map((summary) => summary.textContent)).toEqual([
+      "Updated card",
+      "Fresh card",
+      "Imported card",
+    ]);
   });
 });

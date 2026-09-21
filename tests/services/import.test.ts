@@ -680,7 +680,7 @@ describe("executeImport", () => {
     });
     expect(report.syncedHashes[101]).toMatch(/^[0-9a-f]{64}$/);
     const written = await vault.read(
-      vault.getAbstractFileByPath("Languages/What-is-2+2-101.md") as unknown as ObsidianTFile
+      vault.getAbstractFileByPath("Languages/What-is-2-2-101.md") as unknown as ObsidianTFile
     );
     expect(written).toContain("```flashcard-form");
     expect(written).toContain('"id":101');
@@ -714,7 +714,7 @@ describe("executeImport", () => {
   test("given an existing file when executed then overwrites it", async () => {
     // given
     const { vault } = executeWith({
-      "Languages/What-is-2+2-101.md":
+      "Languages/What-is-2-2-101.md":
         "stale content\n```flashcard-form\nfront: stale\nid: 101\n```\n",
     });
     const notes = [basicImportNote(101, 100)];
@@ -737,7 +737,7 @@ describe("executeImport", () => {
     // then
     expect(report).toMatchObject({ created: 0, overwritten: 1 });
     const written = await vault.read(
-      vault.getAbstractFileByPath("Languages/What-is-2+2-101.md") as unknown as ObsidianTFile
+      vault.getAbstractFileByPath("Languages/What-is-2-2-101.md") as unknown as ObsidianTFile
     );
     expect(written).not.toContain("stale content");
     expect(written).toContain('"id":101');
@@ -765,10 +765,10 @@ describe("executeImport", () => {
 
     // then
     expect(
-      vault.getAbstractFileByPath("Languages/What-is-2+2-101.md")
+      vault.getAbstractFileByPath("Languages/What-is-2-2-101.md")
     ).not.toBeNull();
     expect(
-      vault.getAbstractFileByPath("Languages/What-is-2+2-102.md")
+      vault.getAbstractFileByPath("Languages/What-is-2-2-102.md")
     ).not.toBeNull();
   });
 
@@ -799,7 +799,7 @@ describe("executeImport", () => {
 
     // then
     const created = vault.getMarkdownFiles().map((file) => file.path);
-    expect(created).toEqual(["Languages/What-is-2+2-101.md"]);
+    expect(created).toEqual(["Languages/What-is-2-2-101.md"]);
   });
 
   test("given dotted field text when executed then names the file by front and note id", async () => {
@@ -836,7 +836,7 @@ describe("executeImport", () => {
 
     // then
     const created = vault.getMarkdownFiles().map((file) => file.path);
-    expect(created).toEqual(["Languages/They-caught-the-thief...-104.md"]);
+    expect(created).toEqual(["Languages/They-caught-the-thief-104.md"]);
   });
 
   test("given media references when executed then imports media and rewrites references", async () => {
@@ -885,7 +885,7 @@ describe("executeImport", () => {
   test("given a foreign file at the target path when executed then suffixes instead of overwriting", async () => {
     // given
     const { vault } = executeWith({
-      "Languages/What-is-2+2-101.md": "someone else's notes\n",
+      "Languages/What-is-2-2-101.md": "someone else's notes\n",
     });
     const notes = [basicImportNote(101, 100)];
 
@@ -908,12 +908,12 @@ describe("executeImport", () => {
     expect(report).toMatchObject({ created: 1, overwritten: 0 });
     const untouched = await vault.read(
       vault.getAbstractFileByPath(
-        "Languages/What-is-2+2-101.md"
+        "Languages/What-is-2-2-101.md"
       ) as unknown as ObsidianTFile
     );
     expect(untouched).toBe("someone else's notes\n");
     expect(
-      vault.getAbstractFileByPath("Languages/What-is-2+2-101-1.md")
+      vault.getAbstractFileByPath("Languages/What-is-2-2-101-1.md")
     ).not.toBeNull();
   });
 
