@@ -128,7 +128,7 @@ describe("ImportWizard - first page", () => {
     expect(nextAfter).not.toBeDisabled();
   });
 
-  test("given all notes already imported when the list renders then the deck is greyed out and disabled", async () => {
+  test("given all notes already imported when the list renders then the deck stays enabled for reimport", async () => {
     // given
     respondWithDeckNotes({ Languages: [importedNoteId, secondImportedNoteId] });
     renderWizard({
@@ -140,7 +140,7 @@ describe("ImportWizard - first page", () => {
     const radio = await screen.findByRole("radio", { name: /Languages/ });
 
     // then
-    expect(radio).toBeDisabled();
+    expect(radio).toBeEnabled();
     expect(await screen.findByText("2/2")).toBeInTheDocument();
   });
 

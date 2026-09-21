@@ -196,7 +196,7 @@ export function DeckSelection({
             updatedCount === null ? importedCount : noteIds.length - updatedCount;
           const isFullyImported = isDeckFullyImported(noteIds, upToDateCount);
           const isEmptyDeck = isDeckEmpty(noteIds);
-          const isDisabled = isFullyImported || isEmptyDeck;
+          const isDisabled = isEmptyDeck;
           const { depth, shortName } = splitDeckHierarchy(deckName);
           const tooltip = deckRowTooltip(isFullyImported, isEmptyDeck);
           const deckRowCells = [

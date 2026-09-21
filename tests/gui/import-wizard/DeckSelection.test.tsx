@@ -88,7 +88,7 @@ describe("DeckSelection", () => {
     expect(counters).toHaveLength(2);
   });
 
-  test("given fully imported decks when the list renders then disables them with a tooltip", async () => {
+  test("given fully imported decks when the list renders then keeps them enabled for reimport with a tooltip", async () => {
     // given
     respondWithDecks();
     const importedFileName = "Note.md";
@@ -104,7 +104,7 @@ describe("DeckSelection", () => {
     const counters = await screen.findAllByText("2/2");
 
     // then
-    expect(radio).toBeDisabled();
+    expect(radio).toBeEnabled();
     expect(radio).toHaveAttribute("title", "Already in Obsidian");
     expect(counters).toHaveLength(2);
   });
