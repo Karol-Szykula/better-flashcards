@@ -2,8 +2,29 @@ import { MarkdownView } from "obsidian";
 import type { Plugin, TFile } from "obsidian";
 import { flashcardFormLanguage } from "src/conf/constants";
 
+const viewSettleAttempts = 10;
+const viewSettleDelayMs = 50;
+
 export function containsFlashcardForm(content: string): boolean {
   return content.includes(`\`\`\`${flashcardFormLanguage}`);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function findTargetView(
+  plugin: Plugin,
+  file: TFile
+): Promise<MarkdownView | null> {
+  for (let attempt = 0; attempt < viewSettleAttempts; attempt += 1) {
+    const view = plugin.app.workspace.getActiveViewOfType(MarkdownView);
+    if (view?.file?.path === file.path) {
+      return view;
+    }
+    await sleep(viewSettleDelayMs);
+  }
+  return null;
 }
 
 async function autoPreviewFlashcardForm(
@@ -17,8 +38,8 @@ async function autoPreviewFlashcardForm(
   if (!containsFlashcardForm(content)) {
     return;
   }
-  const view = plugin.app.workspace.getActiveViewOfType(MarkdownView);
-  if (!view || view.file?.path !== file.path || view.getMode() === "preview") {
+  const view = await findTargetView(plugin, file);
+  if (!view || view.getMode() === "preview") {
     return;
   }
   await view.leaf.setViewState({

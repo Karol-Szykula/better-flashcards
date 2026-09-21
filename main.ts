@@ -12,12 +12,17 @@ import {
 import { createFlashcardFormHandler } from "src/gui/flashcard-form/processor";
 import { registerFlashcardFormAutoPreview } from "src/gui/flashcard-form/auto-preview";
 import {
+  executeFastImport,
+  formatFastImportReport,
+} from "src/services/fast-import";
+import {
   createFlashcardFormFile,
   flashcardFormBlock,
 } from "src/gui/flashcard-form/commands";
 
 const generateCurrentFileCommandName = "Generate for the current file";
 const generateAllFilesCommandName = "Generate for all files in vault";
+const fastImportCommandName = "Fast import";
 const importDeckCommandName = "Import deck from Anki";
 const insertFlashcardFormCommandName = "Insert flashcard form";
 const newFlashcardFileCommandName = "New flashcard file";
@@ -53,6 +58,7 @@ export default class ObsidianFlashcard extends Plugin {
     this.registerFlashcardFormRendering();
     this.registerCardCommands();
     this.registerImportCommand();
+    this.registerFastImportCommand();
     this.registerFlashcardFormCommands();
     this.startAnkiStatusPolling(anki, statusBar);
   }
@@ -100,6 +106,50 @@ export default class ObsidianFlashcard extends Plugin {
         ).setTitle("Import deck from Anki").open();
       },
     });
+  }
+
+  private registerFastImportCommand(): void {
+    this.addCommand({
+      id: "fast-import",
+      name: fastImportCommandName,
+      callback: () => {
+        void this.runFastImport();
+      },
+    });
+  }
+
+  private async runFastImport(): Promise<void> {
+    const snapshots = this.settings.deckImportSnapshots ?? {};
+    if (Object.keys(snapshots).length === 0) {
+      new Notice(
+        "No wizard import yet. Run Import deck from Anki first.",
+        noticeTimeout
+      );
+      return;
+    }
+    try {
+      await new Anki().ping();
+    } catch {
+      new Notice(
+        "Error: Anki must be open with AnkiConnect installed.",
+        noticeTimeout
+      );
+      return;
+    }
+    try {
+      const report = await executeFastImport(
+        new Anki(),
+        this.app.vault,
+        this.settings
+      );
+      await this.saveData(this.settings);
+      new Notice(formatFastImportReport(report), noticeTimeout);
+    } catch (error) {
+      new Notice(
+        `Fast import failed: ${error instanceof Error ? error.message : error}`,
+        noticeTimeout
+      );
+    }
   }
 
   private registerFlashcardFormCommands(): void {
@@ -153,6 +203,7 @@ export default class ObsidianFlashcard extends Plugin {
       ignoredDirectories: "",
       lastSyncRev: 0,
       fieldMappings: {},
+      deckImportSnapshots: {},
       syncedNoteHashes: {},
       syncedNoteMods: {},
     };

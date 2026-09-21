@@ -5,7 +5,7 @@ import { Anki } from "src/services/anki";
 import { AnkiNoteInfo } from "src/entities/card";
 import { ankiFieldNames } from "src/conf/constants";
 import type { VaultNoteIndex } from "src/services/vault";
-import { ensureFolderExists } from "src/services/vault";
+import { ensureFolderExists, extractYamlNoteIds } from "src/services/vault";
 import { importDeckMedia, rewriteMediaReferences } from "src/services/media";
 import type { MediaPathMap } from "src/services/media";
 import {
@@ -367,8 +367,7 @@ function joinFolder(folder: string, baseName: string): string {
 }
 
 function yamlNoteIdInContent(content: string, noteId: number): boolean {
-  const pattern = new RegExp(`^id:\\s*${noteId}\\s*$`, "m");
-  return pattern.test(content);
+  return extractYamlNoteIds(content).includes(noteId);
 }
 
 async function resolveExistingNotePath(

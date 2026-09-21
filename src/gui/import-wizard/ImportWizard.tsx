@@ -91,6 +91,15 @@ export function ImportWizard({
       ...(settings.syncedNoteHashes ?? {}),
       ...report.syncedHashes,
     };
+    settings.deckImportSnapshots = {
+      ...(settings.deckImportSnapshots ?? {}),
+      [selectedDeckName]: {
+        deckName: selectedDeckName,
+        fieldMappings,
+        flashcardsTag: settings.flashcardsTag,
+        importedAt: Date.now(),
+      },
+    };
     const importedMods = Object.values(report.syncedNotes);
     if (importedMods.length > 0) {
       settings.lastSyncRev = Math.max(

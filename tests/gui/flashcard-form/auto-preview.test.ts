@@ -50,6 +50,22 @@ function noteFile() {
   return { extension: "md", path: "Note.md" };
 }
 
+async function waitForMs(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function settledView(
+  path: string,
+  mode: string,
+  setViewState: jest.Mock
+): unknown {
+  return {
+    file: { path },
+    getMode: () => mode,
+    leaf: { setViewState },
+  };
+}
+
 async function flushPromises(): Promise<void> {
   await new Promise((resolve) => setImmediate(resolve));
   await new Promise((resolve) => setImmediate(resolve));
@@ -168,6 +184,60 @@ describe("registerFlashcardFormAutoPreview", () => {
     // when
     handlers[0](null);
     await flushPromises();
+
+    // then
+    expect(setViewState).not.toHaveBeenCalled();
+  });
+
+  test("given the view still showing the previous file when opened then waits and switches once settled", async () => {
+    // given
+    const content = "```flashcard-form\nfront: Q\n```\n";
+    const { handlers, plugin, setViewState } = pluginWithNote(
+      content,
+      "Note.md",
+      "source"
+    );
+    registerFlashcardFormAutoPreview(plugin);
+    const workspace = plugin.app.workspace as unknown as {
+      getActiveViewOfType: jest.Mock;
+    };
+    workspace.getActiveViewOfType
+      .mockReturnValueOnce(settledView("Old.md", "source", setViewState))
+      .mockReturnValueOnce(settledView("Old.md", "source", setViewState))
+      .mockReturnValue(settledView("Note.md", "source", setViewState));
+
+    // when
+    handlers[0](noteFile());
+    await waitForMs(400);
+
+    // then
+    expect(setViewState).toHaveBeenCalledTimes(1);
+    expect(setViewState).toHaveBeenCalledWith({
+      active: true,
+      state: { file: "Note.md", mode: "preview", source: false },
+      type: "markdown",
+    });
+  });
+
+  test("given the view never settling on the opened file when opened then does not switch", async () => {
+    // given
+    const content = "```flashcard-form\nfront: Q\n```\n";
+    const { handlers, plugin, setViewState } = pluginWithNote(
+      content,
+      "Note.md",
+      "source"
+    );
+    registerFlashcardFormAutoPreview(plugin);
+    const workspace = plugin.app.workspace as unknown as {
+      getActiveViewOfType: jest.Mock;
+    };
+    workspace.getActiveViewOfType.mockReturnValue(
+      settledView("Old.md", "source", setViewState)
+    );
+
+    // when
+    handlers[0](noteFile());
+    await waitForMs(800);
 
     // then
     expect(setViewState).not.toHaveBeenCalled();

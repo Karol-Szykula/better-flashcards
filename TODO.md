@@ -28,3 +28,18 @@
   - [ ] Move base64 constants (highlightjs, highlightCss, flashcardsIcon) to npm deps / runtime assets
   - [ ] Ensure production React build (NODE_ENV=production)
   - [ ] Target bundle size < 500KB
+
+
+  Cases:
+  - import
+    - first time / wizard import
+    - fast reimport
+    - import of exported notes
+  - export
+    - first export ?
+    - reexport
+    - export of imported notes
+  - sync
+    - sync from newest to oldest direction, only with Anki noteId
+
+How matters the place of note creation? Was it created in Obsidian or was it created in Anki?

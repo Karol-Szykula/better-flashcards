@@ -5,7 +5,7 @@ import type { ISettings } from "src/conf/settings";
 
 export type VaultNoteIndex = Map<number, string>;
 
-const yamlIdPattern = /^id:\s*(\d+)\s*$/gm;
+const yamlIdPattern = /^\s*(?:"id"|id):\s*(\d+)\s*,?\s*$/gm;
 
 export function extractYamlNoteIds(content: string): number[] {
   const ids: number[] = [];
