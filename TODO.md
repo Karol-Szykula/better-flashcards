@@ -73,23 +73,26 @@
   Agreed model regime:
   - M1: export targets the source model (extra.model); new Obsidian
     cards always go to built-in Basic (no reverse, no cloze detection).
-  - M2: plugin models (Obsidian-*) are dead: remove createModels,
-    getModels; Yamlcard fallback is "Basic".
+  - M2: plugin models (Obsidian-*) are dead (done): createModels,
+    getModels removed; Yamlcard fallback is "Basic".
   - M3: ensure-defaults on every export (and in first-run modal):
     modelNamesAndFieldNames check, create missing built-ins, skip +
     report on schema mismatch, never touch user templates.
-  - M4: cloze branch matches both families (Obsidian-cloze and "Cloze");
-    Extra -> Back Extra on export to built-in Cloze (schema TBD, verify
-    against live Anki during implementation: Text + Back Extra).
+  - M4: cloze branch matches built-in "Cloze" only (legacy
+    Obsidian-cloze branch removed); Extra -> Back Extra on export
+    (schema TBD, verify against live Anki during implementation:
+    Text + Back Extra).
   - M5: mapping targets mirror Anki built-ins only: Front, Back, Text,
     Back Extra (+ Skip as UI chrome, not a field).
   - M6: exact-name (case-sensitive) auto-mapping; user maps surplus
     fields only; unmappable stays Skip; auto rows read-only, no override.
   - M7: Add Reverse always Skip (card-generation control flag, never
     content); shown greyed out like other surplus rows.
-  - M8: drop spaced (no Anki equivalent), drop code-highlight (plugin-only,
-    removes base64 constants ~437KB), drop Source entirely (setting,
-    constant, -source variants, link injection).
+  - M8: drop spaced (done: entity, parser, import branches, spaced
+    regex, tests, README), drop Source entirely (done: setting,
+    constant, -source variants, link injection); code-highlight still
+    open (setting, medias, base64 constants ~437KB, containsCode
+    plumbing).
   - M9: old stored mappings (Extra/Prompt/Source) degrade to presets via
     existing resolveFieldMapping validation, no data migration.
 
@@ -111,7 +114,16 @@
   - [ ] UC-15: first-run modal (map all models -> verify defaults ->
     full sync for mapped models only)
   - [ ] UC-16: invariance tests (idempotent and convergent sync)
-  - [ ] UC-17: cuts (spaced, code-highlight, Source) incl. their tests
+  - [x] UC-17a: cut spaced (Spacedcard, generateSpacedCards, spaced
+    regex, import branches, tests, README)
+  - [x] UC-17b: cut Source feature (setting, field, UI, model variants)
+  - [ ] UC-17c: cut code-highlight (setting, medias, base64 constants,
+    containsCode plumbing)
+  - [x] UC-17d: cut plugin model definitions (createModels/getModels,
+    Obsidian-* constants, legacy cloze branches)
+  - Note: buildNoteMarkdown stays frozen (legacy, test-pinned; only its
+    media output is used in import pass 1); prompt/source keys stay in
+    ankiFieldNames for it until UC-19.
   - [ ] UC-18: model layer (modelNamesAndFieldNames service + mock,
     built-in definitions, ensure-defaults, Yamlcard fallback)
   - [ ] UC-19: mapping UI (surplus-only rows, read-only auto rows,

@@ -16,7 +16,6 @@ export class Regex {
 
   flashscardsWithTag!: RegExp;
   cardsInlineStyle!: RegExp;
-  cardsSpacedStyle!: RegExp;
   cardsClozeWholeLine!: RegExp;
   singleClozeCurly!: RegExp;
   singleClozeHighlight!: RegExp;
@@ -79,13 +78,6 @@ export class Regex {
         "( {0,3}[#]{0,6})?(?:(?:[\\t ]*)(?:\\d.|[-+]|\\*(?= )|#{1,6}))?(.+?) ?(" + sepLongest + "|" + sepShortest + ") ?(.+?)((?: *#[\\p{Letter}\\-\\/_]+)+|$)(?:\\n\\^(\\d{13}))?";
     }
     this.cardsInlineStyle = new RegExp(str, flags);
-
-    // https://regex101.com/r/HOXF5E/1
-    str =
-      "( {0,3}[#]*)((?:[^\\n]\\n?)+?)(#" +
-      settings.flashcardsTag +
-      "[/-]spaced)((?: *#[\\p{Letter}-]+)*) *\\n?(?:\\^(\\d{13}))?";
-    this.cardsSpacedStyle = new RegExp(str, flags);
 
     // https://regex101.com/r/cgtnLf/1
 
