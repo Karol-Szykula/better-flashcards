@@ -12,14 +12,13 @@
 - [ ] Wizard Cards: clear card selection on deck change (wrong counter)
 - [ ] Wizard Cards: vertically align checkbox with label (CSS)
 - [ ] ImportWizard: extract syncState useMemo into named buildNoteSyncState
-- [ ] GUI tests: Save without folder, label↔checkbox, selection reset, report/error; manual: sticky/pagination in test-vault
+- [ ] GUI tests: Save without folder, label↔checkbox, selection reset, report/error
 - [ ] Wizard integration tests: XState model (xstate/graph) + Mermaid diagram in docs
 - [ ] Integration tests: end-to-end happy path + data.json
 - [ ] Integration tests: reimport after card edit (no media duplicates)
 - [ ] Integration tests: Cancel/error on Save, Anki down on every page
 - [ ] Integration tests: model simple paths (getSimplePaths) as regression pack
 - [ ] Sync: file hash per note + diverged state (detect Obsidian-side edits)
-- [ ] Import to the F1 form
 - [ ] Bundle size: fix 5MB main.js
   - [ ] Remove inline sourcemap (sourcemap: true or false for production)
   - [ ] Move base64 constants (highlightjs, highlightCss, flashcardsIcon) to npm deps / runtime assets
