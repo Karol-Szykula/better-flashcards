@@ -1,6 +1,7 @@
 import type { Vault } from "obsidian";
-import { Anki } from "src/services/anki";
+import type { Anki } from "src/services/anki";
 import { escapeRegExp } from "src/utils";
+import { ensureFolderExists } from "src/services/vault";
 
 export type MediaPathMap = Record<string, string>;
 
@@ -11,7 +12,7 @@ export function deckAttachmentsFolder(deckName: string): string {
 export function resolveMediaPath(
   deckName: string,
   filename: string,
-  takenPaths: Set<string>
+  takenPaths: Set<string>,
 ): string {
   const folder = deckAttachmentsFolder(deckName);
   const dotIndex = filename.lastIndexOf(".");
@@ -36,14 +37,24 @@ export function decodeBase64(base64: string): ArrayBuffer {
   return bytes.buffer;
 }
 
+export function encodeBase64(data: ArrayBuffer): string {
+  const bytes = new Uint8Array(data);
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary);
+}
+
 export async function importDeckMedia(
   anki: Anki,
   vault: Vault,
   deckName: string,
-  filenames: string[]
+  filenames: string[],
 ): Promise<MediaPathMap> {
   const importedPaths: MediaPathMap = {};
   const takenPaths = new Set<string>();
+  let folderReady = false;
   for (const filename of filenames) {
     if (importedPaths[filename]) {
       continue;
@@ -51,6 +62,10 @@ export async function importDeckMedia(
     const data = await anki.retrieveMediaFile(filename);
     if (!data) {
       continue;
+    }
+    if (!folderReady) {
+      await ensureFolderExists(vault, deckAttachmentsFolder(deckName));
+      folderReady = true;
     }
     let targetPath = resolveMediaPath(deckName, filename, takenPaths);
     while (await vault.getAbstractFileByPath(targetPath)) {
@@ -64,13 +79,13 @@ export async function importDeckMedia(
 
 export function rewriteMediaReferences(
   content: string,
-  importedPaths: MediaPathMap
+  importedPaths: MediaPathMap,
 ): string {
   let rewritten = content;
   for (const [filename, vaultPath] of Object.entries(importedPaths)) {
     const imagePattern = new RegExp(
       `<img[^>]*src="${escapeRegExp(filename)}"[^>]*>`,
-      "g"
+      "g",
     );
     rewritten = rewritten.replace(imagePattern, `![[${vaultPath}]]`);
     rewritten = rewritten

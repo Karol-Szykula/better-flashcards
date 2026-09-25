@@ -1,5 +1,7 @@
-{ 
+{
   "compilerOptions": {
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
     "inlineSourceMap": true,
     "inlineSources": true,
     "module": "ESNext",
@@ -8,30 +10,25 @@
     "esModuleInterop": true,
     "target": "es2018",
     "skipLibCheck": true,
-    "types": [
-      "jest",
-      "node"
-    ],
+    "types": ["jest", "node"],
     "paths": {
-      "src/*": [
-        "./src/*"
-      ],
+      "src/*": ["./src/*"],
       "obsidian-test-mocks/obsidian": [
         "./node_modules/obsidian-test-mocks/dist/lib/cjs/obsidian/index.d.cts"
       ]
     },
     "allowJs": true,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+    "noFallthroughCasesInSwitch": true,
     "noImplicitAny": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "importHelpers": true,
-    "lib": [
-      "dom",
-      "es2018",
-      "scripthost",
-      "ES2020.String"
-
-    ],
+    "lib": ["dom", "es2018", "scripthost", "ES2020.String"]
   },
-  "include": [
-    "**/*.ts", "**/*.tsx", "jest.config.js",
-  ]
+  "include": ["**/*.ts", "**/*.tsx", "jest.config.js"]
 }

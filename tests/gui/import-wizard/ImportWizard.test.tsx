@@ -1,0 +1,345 @@
+/**
+ * @jest-environment jsdom
+ *
+ * Integration tests for the ImportWizard first page: real in-memory vault
+ * plus mocked AnkiConnect, asserting the composed DeckSelection view,
+ * page indicator labels and footer button states.
+ */
+import "obsidian-test-mocks/jest-setup";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { App } from "obsidian-test-mocks/obsidian";
+import type { Vault as ObsidianVault } from "obsidian";
+import { ImportWizard } from "src/gui/import-wizard/ImportWizard";
+import { createSettings } from "../../helpers/settings";
+import { AnkiConnectMock } from "../../mocks/anki-connect";
+
+AnkiConnectMock.install();
+
+beforeEach(() => {
+  AnkiConnectMock.reset();
+});
+
+function respondWithDeckNotes(deckCards: Record<string, number[]>) {
+  AnkiConnectMock.setResponder((request) => {
+    switch (request.action) {
+      case "deckNames":
+        return { result: Object.keys(deckCards), error: null };
+      case "findNotes": {
+        const params = request.params as Record<string, unknown>;
+        const query = params["query"] as string;
+        const deckName = Object.keys(deckCards).find((name) =>
+          query.includes(name),
+        );
+        return { result: deckName ? deckCards[deckName] : [], error: null };
+      }
+      default:
+        return { result: null, error: null };
+    }
+  });
+}
+
+function respondWithNotes(notes: Array<Record<string, unknown>>) {
+  AnkiConnectMock.setResponder((request) => {
+    switch (request.action) {
+      case "deckNames":
+        return { result: ["Languages"], error: null };
+      case "findNotes":
+        return { result: notes.map((note) => note["noteId"]), error: null };
+      case "notesInfo":
+        return { result: notes, error: null };
+      default:
+        return { result: null, error: null };
+    }
+  });
+}
+
+function renderWizard(files: Record<string, string> = {}) {
+  const app = App.createConfigured__({ files });
+  const onCancel = jest.fn();
+  const saveSettings = jest.fn(async (): Promise<void> => undefined);
+  render(
+    <ImportWizard
+      onCancel={onCancel}
+      saveSettings={saveSettings}
+      settings={createSettings()}
+      vault={app.vault as unknown as ObsidianVault}
+    />,
+  );
+  return { onCancel };
+}
+
+function renderWizardWithVault(files: Record<string, string> = {}) {
+  const app = App.createConfigured__({ files });
+  const onCancel = jest.fn();
+  const saveSettings = jest.fn(async (): Promise<void> => undefined);
+  render(
+    <ImportWizard
+      onCancel={onCancel}
+      saveSettings={saveSettings}
+      settings={createSettings()}
+      vault={app.vault as unknown as ObsidianVault}
+    />,
+  );
+  return { app, onCancel };
+}
+
+describe("ImportWizard - first page", () => {
+  const importedNoteFileName = "Note.md";
+  const importedNoteId = 1111111111111;
+  const importedNoteContent = `\`\`\`note-form\nfront: Q\nback: A\nid: ${importedNoteId}\n\`\`\`\n`;
+  const secondImportedNoteFileName = "Other.md";
+  const secondImportedNoteId = 2222222222222;
+  const secondImportedNoteContent = `\`\`\`note-form\nfront: Q\nback: B\nid: ${secondImportedNoteId}\n\`\`\`\n`;
+
+  test("given a deck in Anki when the wizard opens then shows all page indicator labels", async () => {
+    // given
+    respondWithDeckNotes({ Languages: [1111111111111] });
+    renderWizard();
+
+    // when
+    const deck = await screen.findByText("Deck");
+    const fields = await screen.findByText("Fields");
+    const cards = await screen.findByText("Cards");
+    const save = await screen.findByText("Save");
+
+    // then
+    expect(deck).toBeInTheDocument();
+    expect(fields).toBeInTheDocument();
+    expect(cards).toBeInTheDocument();
+    expect(save).toBeInTheDocument();
+  });
+
+  test("given one of two notes already imported when the list renders then shows the 1/2 counter", async () => {
+    // given
+    respondWithDeckNotes({ Languages: [importedNoteId, secondImportedNoteId] });
+    renderWizard({ [importedNoteFileName]: importedNoteContent });
+
+    // when
+    const counter = await screen.findByText("1/2");
+
+    // then
+    expect(await screen.findByText("Languages")).toBeInTheDocument();
+    expect(counter).toBeInTheDocument();
+  });
+
+  test("given no deck selected when the page loads then Next is disabled until a deck is chosen", async () => {
+    // given
+    respondWithDeckNotes({ Languages: [1111111111111] });
+    renderWizard();
+    const user = userEvent.setup();
+
+    // when
+    const nextBefore = await screen.findByRole("button", { name: /Next/ });
+
+    // then
+    expect(nextBefore).toBeDisabled();
+
+    // when
+    await user.click(await screen.findByRole("radio", { name: /Languages/ }));
+    const nextAfter = await screen.findByRole("button", { name: /Next/ });
+
+    // then
+    expect(nextAfter).not.toBeDisabled();
+  });
+
+  test("given all notes already imported when the list renders then the deck stays enabled for reimport", async () => {
+    // given
+    respondWithDeckNotes({ Languages: [importedNoteId, secondImportedNoteId] });
+    renderWizard({
+      [importedNoteFileName]: importedNoteContent,
+      [secondImportedNoteFileName]: secondImportedNoteContent,
+    });
+
+    // when
+    const radio = await screen.findByRole("radio", { name: /Languages/ });
+
+    // then
+    expect(radio).toBeEnabled();
+    expect(await screen.findByText("2/2")).toBeInTheDocument();
+  });
+
+  test("given the first page when rendered then shows Cancel without Back and when Cancel is clicked then notifies", async () => {
+    // given
+    respondWithDeckNotes({ Languages: [1111111111111] });
+    const { onCancel } = renderWizard();
+    const user = userEvent.setup();
+
+    // when
+    const cancel = await screen.findByRole("button", { name: "Cancel" });
+
+    // then
+    expect(
+      screen.queryByRole("button", { name: /Back/ }),
+    ).not.toBeInTheDocument();
+
+    // when
+    await user.click(cancel);
+
+    // then
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("ImportWizard - last page", () => {
+  test("given deck notes when the cards page is reached then shows Import in the footer instead of Next", async () => {
+    // given
+    respondWithNotes([
+      {
+        noteId: 1111111111111,
+        mod: 100,
+        modelName: "Basic",
+        fields: {
+          Front: { value: "<p>What is 2+2?</p>" },
+          Back: { value: "<p>4</p>" },
+        },
+        tags: [],
+        cards: [7],
+      },
+    ]);
+    renderWizard();
+    const user = userEvent.setup();
+
+    // when
+    await user.click(await screen.findByRole("radio", { name: /Languages/ }));
+    await user.click(
+      await screen.findByRole("button", { name: /Next: Fields/ }),
+    );
+    await screen.findByText(/Map fields for deck/);
+    await user.click(
+      await screen.findByRole("button", { name: /Next: Cards/ }),
+    );
+    await screen.findByText(/Cards to import: 1\/1/);
+    const importButton = await screen.findByRole("button", { name: "Import" });
+
+    // then
+    expect(importButton).toBeInTheDocument();
+    expect(importButton).not.toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: /Next/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  test("given a cloze deck when the fields page loads then preselects the pack mapping", async () => {
+    // given
+    respondWithNotes([
+      {
+        noteId: 1111111111111,
+        mod: 100,
+        modelName: "Cloze",
+        fields: {
+          Text: { value: "<p>Paris is {{c1::France}}</p>" },
+          Extra: { value: "<p>Capital</p>" },
+        },
+        tags: [],
+        cards: [7],
+      },
+    ]);
+    renderWizardWithVault();
+    const user = userEvent.setup();
+
+    // when
+    await user.click(await screen.findByRole("radio", { name: /Languages/ }));
+    await user.click(
+      await screen.findByRole("button", { name: /Next: Fields/ }),
+    );
+    await screen.findByText(/Map fields for deck/);
+
+    // then
+    const selects = screen.getAllByRole("combobox") as HTMLSelectElement[];
+    expect(selects.some((select) => select.value === "Extra")).toBe(true);
+  });
+
+  test("given a custom model when advancing past fields then saves its pack", async () => {
+    // given
+    respondWithNotes([
+      {
+        noteId: 1111111111111,
+        mod: 100,
+        modelName: "My Model",
+        fields: {
+          Question: { value: "<p>Q</p>" },
+          Answer: { value: "<p>A</p>" },
+        },
+        tags: [],
+        cards: [7],
+      },
+    ]);
+    const { app } = renderWizardWithVault();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("radio", { name: /Languages/ }));
+    await user.click(
+      await screen.findByRole("button", { name: /Next: Fields/ }),
+    );
+    await screen.findByText(/Map fields for deck/);
+
+    // when
+    await user.click(
+      await screen.findByRole("button", { name: /Next: Cards/ }),
+    );
+    await screen.findByText(/Cards to import: 1\/1/);
+
+    // then
+    const vault = app.vault as unknown as ObsidianVault;
+    const packPath = ".obsidian/plugins/better-flashcards/packs/My-Model.json";
+    const adapter = vault.adapter as unknown as {
+      read(path: string): Promise<string>;
+    };
+    await waitFor(async () => {
+      await expect(adapter.read(packPath)).resolves.toContain("My Model");
+    });
+  });
+
+  test("given a ready import when the footer Import is clicked then shows only the summary with OK closing the window", async () => {
+    // given
+    respondWithNotes([
+      {
+        noteId: 1111111111111,
+        mod: 100,
+        modelName: "Basic",
+        fields: {
+          Front: { value: "<p>What is 2+2?</p>" },
+          Back: { value: "<p>4</p>" },
+        },
+        tags: [],
+        cards: [7],
+      },
+    ]);
+    const { onCancel } = renderWizard();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("radio", { name: /Languages/ }));
+    await user.click(
+      await screen.findByRole("button", { name: /Next: Fields/ }),
+    );
+    await screen.findByText(/Map fields for deck/);
+    await user.click(
+      await screen.findByRole("button", { name: /Next: Cards/ }),
+    );
+    await screen.findByText(/Cards to import: 1\/1/);
+
+    // when
+    await user.click(await screen.findByRole("button", { name: "Import" }));
+
+    // then
+    expect(await screen.findByText(/Created: 1/)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Import" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Next/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Back/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Cancel" }),
+    ).not.toBeInTheDocument();
+    const okButton = await screen.findByRole("button", { name: "OK" });
+
+    // when
+    await user.click(okButton);
+
+    // then
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+});

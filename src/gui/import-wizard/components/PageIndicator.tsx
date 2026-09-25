@@ -1,13 +1,11 @@
 import type { JSX } from "react";
-import {
-  mergeClasses,
-  pageIndicatorClasses,
-} from "src/gui/import-wizard/classes";
+import { mergeClasses } from "src/gui/classes";
+import { pageIndicatorClasses } from "src/gui/import-wizard/classes";
 
 export interface PageIndicatorProps {
-  connectors?: boolean;
-  currentPage: number;
-  pages: string[];
+  readonly connectors?: boolean;
+  readonly currentPage: number;
+  readonly pages: string[];
 }
 
 export function PageIndicator({
@@ -26,7 +24,7 @@ export function PageIndicator({
             className={mergeClasses(
               pageIndicatorClasses.page,
               isActive ? pageIndicatorClasses.pageActive : undefined,
-              isDone ? pageIndicatorClasses.pageDone : undefined
+              isDone ? pageIndicatorClasses.pageDone : undefined,
             )}
             key={title}
           >

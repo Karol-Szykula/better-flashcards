@@ -1,0 +1,9 @@
+{
+  "gitignore": ["node_modules", "coverage", "dist", "main.js"],
+  "format": ["typescript", "tsx"],
+  "ignore": ["docs/**", "**/*.md"],
+  "minLines": 6,
+  "minTokens": 60,
+  "reporters": ["console"],
+  "threshold": 3
+}

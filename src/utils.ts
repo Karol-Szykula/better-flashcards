@@ -1,54 +1,57 @@
-export function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  let binary = "";
-  const bytes = new Uint8Array(buffer);
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
+export function describeUnknown(value: unknown): string {
+  if (value instanceof Error) {
+    return value.message;
   }
-  return window.btoa(binary);
+  if (typeof value === "string") {
+    return value;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (
+    value === undefined ||
+    typeof value === "function" ||
+    typeof value === "symbol"
+  ) {
+    return Object.prototype.toString.call(value);
+  }
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return Object.prototype.toString.call(value);
+  }
 }
 
-export function arraysEqual(a: string[], b: string[]) {
+export function toError(value: unknown): Error {
+  return value instanceof Error ? value : new Error(describeUnknown(value));
+}
+
+export function trimDashes(value: string): string {
+  let start = 0;
+  let end = value.length;
+  while (start < end && value[start] === "-") {
+    start += 1;
+  }
+  while (end > start && value[end - 1] === "-") {
+    end -= 1;
+  }
+  return value.slice(start, end);
+}
+
+export function arraysEqual(a: string[], b: string[]): boolean {
   if (a === b) return true;
-  if (a == null || b == null) return false;
   if (a.length !== b.length) return false;
 
-  a.sort();
-  b.sort();
+  const sortedFirst = [...a].sort((first, second) =>
+    first.localeCompare(second),
+  );
+  const sortedSecond = [...b].sort((first, second) =>
+    first.localeCompare(second),
+  );
 
-  for (let i = 0; i < a.length; ++i) {
-    if (a[i] !== b[i]) return false;
-  }
-  return true;
+  return sortedFirst.every((value, index) => value === sortedSecond[index]);
 }
 
-export function escapeMarkdown(string: string, skips: string[] = []) {
-  const replacements: Array<[RegExp, string, string]> = [
-    // [/\*/g, "\\*", "asterisks"],
-    [/#/g, "#", "number signs"],
-    // [/\//g, "\\/", "slashes"],
-    [/\\/g, "\\\\", "backslash"],
-    [/\(/g, "\\(", "parentheses"],
-    [/\)/g, "\\)", "parentheses"],
-    [/\[/g, "\\[", "square brackets"],
-    [/\]/g, "\\]", "square brackets"],
-    [/</g, "&lt;", "angle brackets"],
-    [/>/g, "&gt;", "angle brackets"],
-    [/_/g, "\\_", "underscores"],
-  ];
-
-  return replacements.reduce(function (
-    s: string,
-    replacement: [RegExp, string, string]
-  ) {
-    const name = replacement[2];
-    return name && skips.indexOf(name) !== -1
-      ? s
-      : s.replace(replacement[0], replacement[1]);
-  }, string);
+export function escapeRegExp(str: string) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // $& means the whole matched string
 }
-
-
-  export function escapeRegExp(str: string) {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // $& means the whole matched string
-  }

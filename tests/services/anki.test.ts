@@ -1,15 +1,9 @@
 import { Anki } from "src/services/anki";
-import { Flashcard } from "src/entities/flashcard";
-import {
-  basicModelName,
-  basicReversedModelName,
-  clozeModelName,
-  codeDeckExtension,
-  sourceDeckExtension,
-  spacedModelName,
-} from "src/conf/constants";
+import type { AnkiModelDefinition } from "src/services/anki";
+import { BasicNote } from "src/entities/basic-note";
 import { AnkiConnectMock } from "../mocks/anki-connect";
 import type { AnkiConnectRequest } from "../mocks/anki-connect";
+import { required } from "../helpers/required";
 
 AnkiConnectMock.install();
 
@@ -37,151 +31,311 @@ function subActionsOf(request: AnkiConnectRequest): SubAction[] {
 function multiSubActions(): SubAction[] {
   const found = multiRequests();
   expect(found).toHaveLength(1);
-  return subActionsOf(found[0]);
+  return subActionsOf(required(found[0], "request"));
 }
 
-/** Actions of the last multi request - for flows with several requests. */
-function lastMultiSubActions(): SubAction[] {
-  const found = multiRequests();
-  expect(found.length).toBeGreaterThan(0);
-  return subActionsOf(found[found.length - 1]);
-}
-
-function createCard(): Flashcard {
-  return new Flashcard(
+function createNote(): BasicNote {
+  return new BasicNote(
     5,
     "Test deck",
-    "original content",
     { Front: "Question", Back: "Answer" },
     false,
-    0,
-    10,
     ["b", "c"],
-    false,
-    [],
-    false,
   );
 }
 
+function multiActions(): { action: string; modelName?: string }[] {
+  return multiSubActions().map((sub) => ({
+    action: sub.action,
+    modelName: sub.params["modelName"] as string | undefined,
+  }));
+}
+
 describe("Anki - connection", () => {
-  test("ping returns true when AnkiConnect reports version 6", async () => {
+  test("given version 6 reported when pinged then returns true", async () => {
+    // given
     const reportedVersion = ankiConnectVersion;
     AnkiConnectMock.respondWith(reportedVersion);
-    await expect(new Anki().ping()).resolves.toBe(true);
+
+    // when
+    const connected = await new Anki().ping();
+
+    // then
+    expect(connected).toBe(true);
     expect(AnkiConnectMock.requests).toHaveLength(1);
-    expect(AnkiConnectMock.requests[0].action).toBe("version");
+    expect(required(AnkiConnectMock.requests[0], "request").action).toBe(
+      "version",
+    );
   });
 
-  test("ping returns false when version differs", async () => {
+  test("given a different version reported when pinged then returns false", async () => {
+    // given
     const unsupportedVersion = 5;
     AnkiConnectMock.respondWith(unsupportedVersion);
-    await expect(new Anki().ping()).resolves.toBe(false);
+
+    // when
+    const connected = await new Anki().ping();
+
+    // then
+    expect(connected).toBe(false);
   });
 
-  test("ping rejects when Anki is unreachable", async () => {
+  test("given unreachable Anki when pinged then rejects", async () => {
+    // given
     AnkiConnectMock.setConnectionDown(true);
-    await expect(new Anki().ping()).rejects.toThrow();
+
+    // when
+    const ping = new Anki().ping();
+
+    // then
+    await expect(ping).rejects.toThrow();
   });
 
-  test("invoke rejects a malformed response", async () => {
+  test("given a malformed response when invoked then rejects", async () => {
+    // given
     const malformedResponse = { result: 6 };
     AnkiConnectMock.setResponder(() => malformedResponse);
-    await expect(new Anki().ping()).rejects.toThrow();
+
+    // when
+    const ping = new Anki().ping();
+
+    // then
+    await expect(ping).rejects.toThrow();
   });
 
-  test("invoke rejects an error response", async () => {
+  test("given an error response when invoked then rejects with it", async () => {
+    // given
     const ankiErrorResponse: Record<string, unknown> = {
       result: null,
       error: "boom",
     };
     AnkiConnectMock.setResponder(() => ankiErrorResponse);
-    await expect(new Anki().ping()).rejects.toThrow("boom");
+
+    // when
+    const ping = new Anki().ping();
+
+    // then
+    await expect(ping).rejects.toThrow("boom");
   });
 
-  test("requestPermission forwards the AnkiConnect response", async () => {
+  test("given granted permission when requested then forwards it", async () => {
+    // given
     const grantedPermission = { permission: "granted" };
     AnkiConnectMock.respondWith(grantedPermission);
-    await expect(new Anki().requestPermission()).resolves.toEqual(
-      grantedPermission,
+
+    // when
+    const permission = await new Anki().requestPermission();
+
+    // then
+    expect(permission).toEqual(grantedPermission);
+    expect(required(AnkiConnectMock.requests[0], "request").action).toBe(
+      "requestPermission",
     );
-    expect(AnkiConnectMock.requests[0].action).toBe("requestPermission");
   });
 });
 
 describe("Anki - decks and notes lookup", () => {
-  test("getDeckNames returns the deck list", async () => {
+  test("given a deck list when requested then returns it", async () => {
+    // given
     const deckList = ["Default", "Languages"];
     AnkiConnectMock.respondWith(deckList);
-    await expect(new Anki().getDeckNames()).resolves.toEqual(deckList);
+
+    // when
+    const decks = await new Anki().getDeckNames();
+
+    // then
+    expect(decks).toEqual(deckList);
     expect(AnkiConnectMock.requests[0]).toMatchObject({ action: "deckNames" });
   });
 
-  test("findNotes sends the query", async () => {
+  test("given a deck query when searched then sends it and returns ids", async () => {
+    // given
     const deckQuery = "deck:Default";
     const foundNoteIds = [11, 22];
     AnkiConnectMock.respondWith(foundNoteIds);
-    await expect(new Anki().findNotes(deckQuery)).resolves.toEqual(
-      foundNoteIds,
-    );
+
+    // when
+    const noteIds = await new Anki().findNotes(deckQuery);
+
+    // then
+    expect(noteIds).toEqual(foundNoteIds);
     expect(AnkiConnectMock.requests[0]).toMatchObject({
       action: "findNotes",
       params: { query: deckQuery },
     });
   });
 
-  test("getCards asks notesInfo for the given ids", async () => {
+  test("given note ids when requested then asks notesInfo and returns them", async () => {
+    // given
     const requestedNoteIds = [1, 2];
     const notesInfo = [{ noteId: 1 }];
     AnkiConnectMock.respondWith(notesInfo);
-    await expect(new Anki().getCards(requestedNoteIds)).resolves.toEqual(
-      notesInfo,
-    );
+
+    // when
+    const cards = await new Anki().getNotes(requestedNoteIds);
+
+    // then
+    expect(cards).toEqual(notesInfo);
     expect(AnkiConnectMock.requests[0]).toMatchObject({
       action: "notesInfo",
       params: { notes: requestedNoteIds },
     });
   });
 
-  test("cardsInfo asks cardsInfo for the given ids", async () => {
+  test("given model names when requested then asks modelNames", async () => {
+    // given
+    const modelNames = ["Basic", "Cloze"];
+    AnkiConnectMock.respondWith(modelNames);
+
+    // when
+    const names = await new Anki().modelNames();
+
+    // then
+    expect(names).toEqual(modelNames);
+    expect(AnkiConnectMock.requests[0]).toMatchObject({ action: "modelNames" });
+  });
+
+  test("given a model name when its fields are requested then asks modelFieldNames", async () => {
+    // given
+    const fields = ["Text", "Back Extra"];
+    AnkiConnectMock.respondWith(fields);
+
+    // when
+    const result = await new Anki().modelFieldNames("Cloze");
+
+    // then
+    expect(result).toEqual(fields);
+    expect(AnkiConnectMock.requests[0]).toMatchObject({
+      action: "modelFieldNames",
+      params: { modelName: "Cloze" },
+    });
+  });
+
+  test("given several models when fields are requested in one batch then uses a single multi with raw results", async () => {
+    // given
+    const wanted = ["Basic", "Cloze"];
+    AnkiConnectMock.respondWith([
+      ["Basic", "Cloze", "Luka"],
+      ["Front", "Back"],
+      { result: ["Text", "Back Extra"], error: null },
+    ]);
+
+    // when
+    const snapshot = await new Anki().modelNamesWithFields(wanted);
+
+    // then
+    expect(snapshot).toEqual({
+      fieldsByModel: {
+        Basic: ["Front", "Back"],
+        Cloze: ["Text", "Back Extra"],
+      },
+      modelNames: ["Basic", "Cloze", "Luka"],
+    });
+    expect(multiActions()).toEqual([
+      { action: "modelNames" },
+      { action: "modelFieldNames", modelName: "Basic" },
+      { action: "modelFieldNames", modelName: "Cloze" },
+    ]);
+  });
+
+  test("given a failing action inside a multi batch when read then rejects with its error", async () => {
+    // given
+    AnkiConnectMock.respondWith([
+      ["Basic"],
+      { result: null, error: "model not found" },
+    ]);
+
+    // when
+    const run = new Anki().modelNamesWithFields(["Basic"]);
+
+    // then
+    await expect(run).rejects.toThrow("model not found");
+  });
+
+  test("given several missing models when created then sends one multi with all createModel actions", async () => {
+    // given
+    const definitions = [
+      {
+        modelName: "Basic",
+        inOrderFields: ["Front", "Back"],
+        css: "css",
+        isCloze: false,
+        cardTemplates: [],
+      },
+      {
+        modelName: "Cloze",
+        inOrderFields: ["Text", "Back Extra"],
+        css: "css",
+        isCloze: true,
+        cardTemplates: [],
+      },
+    ];
+    AnkiConnectMock.respondWith([{ result: {}, error: null }]);
+
+    // when
+    await new Anki().createModels(definitions);
+
+    // then
+    expect(multiActions()).toEqual([
+      { action: "createModel", modelName: "Basic" },
+      { action: "createModel", modelName: "Cloze" },
+    ]);
+  });
+
+  test("given no models to create when created then sends nothing", async () => {
+    // given
+    const definitions: AnkiModelDefinition[] = [];
+
+    // when
+    await new Anki().createModels(definitions);
+
+    // then
+    expect(AnkiConnectMock.requests).toHaveLength(0);
+  });
+
+  test("given card ids when requested then asks cardsInfo", async () => {
+    // given
     const requestedCardIds = [3];
     AnkiConnectMock.respondWith([]);
+
+    // when
     await new Anki().cardsInfo(requestedCardIds);
+
+    // then
     expect(AnkiConnectMock.requests[0]).toMatchObject({
       action: "cardsInfo",
       params: { cards: requestedCardIds },
     });
   });
 
-  test("deleteCards asks deleteNotes", async () => {
-    const deletedNoteIds = [4];
-    AnkiConnectMock.respondWith(null);
-    await new Anki().deleteCards(deletedNoteIds);
-    expect(AnkiConnectMock.requests[0]).toMatchObject({
-      action: "deleteNotes",
-      params: { notes: deletedNoteIds },
-    });
-  });
-
-  test("createDeck sends the deck name", async () => {
+  test("given a deck name when created then sends it and returns the id", async () => {
+    // given
     const newDeckName = "Languages";
     const newDeckId = 42;
     AnkiConnectMock.respondWith(newDeckId);
-    await expect(new Anki().createDeck(newDeckName)).resolves.toEqual(
-      newDeckId,
-    );
+
+    // when
+    const deckId = await new Anki().createDeck(newDeckName);
+
+    // then
+    expect(deckId).toEqual(newDeckId);
     expect(AnkiConnectMock.requests[0]).toMatchObject({
       action: "createDeck",
       params: { deck: newDeckName },
     });
   });
 
-  test("changeDeck sends card ids and the deck name", async () => {
+  test("given card ids and a deck when moved then sends them and returns null", async () => {
+    // given
     const movedCardIds = [5, 6];
     const targetDeck = "Languages";
     AnkiConnectMock.respondWith(null);
-    await expect(
-      new Anki().changeDeck(movedCardIds, targetDeck),
-    ).resolves.toBeNull();
+
+    // when
+    const result = await new Anki().changeDeck(movedCardIds, targetDeck);
+
+    // then
+    expect(result).toBeNull();
     expect(AnkiConnectMock.requests[0]).toMatchObject({
       action: "changeDeck",
       params: { cards: movedCardIds, deck: targetDeck },
@@ -189,98 +343,48 @@ describe("Anki - decks and notes lookup", () => {
   });
 });
 
-describe("Anki - models", () => {
-  const modelCreationResults: unknown[] = [null, null, null, null];
-  const expectedModelNames = [
-    basicModelName,
-    basicReversedModelName,
-    clozeModelName,
-    spacedModelName,
-  ];
-
-  test("createModels builds the four base models", async () => {
-    AnkiConnectMock.respondWith(modelCreationResults);
-    await expect(new Anki().createModels(false, false)).resolves.toEqual(
-      modelCreationResults,
-    );
-
-    const actions = multiSubActions();
-    expect(actions).toHaveLength(4);
-    expect(actions.map((a) => a.action)).toEqual([
-      "createModel",
-      "createModel",
-      "createModel",
-      "createModel",
-    ]);
-    const names = actions.map((a) => (a.params["modelName"] as string) ?? "");
-    expect(names).toEqual(expectedModelNames);
-  });
-
-  test("createModels with source support adds the Source field", async () => {
-    AnkiConnectMock.respondWith(modelCreationResults);
-    await expect(new Anki().createModels(true, false)).resolves.toEqual(
-      modelCreationResults,
-    );
-
-    const actions = multiSubActions();
-    const names = actions.map((a) => (a.params["modelName"] as string) ?? "");
-    for (const name of names) {
-      expect(name).toContain(sourceDeckExtension);
-    }
-    const fields = actions[0].params["inOrderFields"] as string[];
-    expect(fields).toContain("Source");
-  });
-
-  test("createModels with code highlight support doubles the models", async () => {
-    const doubledResults = new Array(8).fill(null);
-    AnkiConnectMock.respondWith(doubledResults);
-    await expect(new Anki().createModels(false, true)).resolves.toEqual(
-      doubledResults,
-    );
-
-    const actions = multiSubActions();
-    expect(actions).toHaveLength(8);
-    const names = actions.map((a) => (a.params["modelName"] as string) ?? "");
-    expect(names.slice(4).every((n) => n.includes(codeDeckExtension))).toBe(
-      true,
-    );
-  });
-});
-
 describe("Anki - media", () => {
-  test("retrieveMediaFile sends the filename", async () => {
+  test("given a filename when retrieved then sends it and returns content", async () => {
+    // given
     const mediaContent = "ZGF0YQ==";
     const mediaFilename = "image.png";
     AnkiConnectMock.respondWith(mediaContent);
-    await expect(
-      new Anki().retrieveMediaFile(mediaFilename)
-    ).resolves.toEqual(mediaContent);
+
+    // when
+    const content = await new Anki().retrieveMediaFile(mediaFilename);
+
+    // then
+    expect(content).toEqual(mediaContent);
     expect(AnkiConnectMock.requests[0]).toMatchObject({
       action: "retrieveMediaFile",
       params: { filename: mediaFilename },
     });
   });
 
-  test("storeMediaFiles skips the request when there is no media", async () => {
-    await expect(new Anki().storeMediaFiles([createCard()])).resolves.toEqual(
-      {},
-    );
+  test("given no media when stored then skips the request", async () => {
+    // when
+    const stored = await new Anki().storeMediaFiles([createNote()]);
+
+    // then
+    expect(stored).toEqual({});
     expect(AnkiConnectMock.requests).toHaveLength(0);
   });
 
-  test("storeMediaFiles stores each media file", async () => {
+  test("given card media when stored then sends one store action per file", async () => {
+    // given
     const mediaFilename = "image.png";
     const mediaContent = "ZGF0YQ==";
     const storeResults: unknown[] = [null];
     AnkiConnectMock.respondWith(storeResults);
-    const card = createCard();
-    card.mediaNames = [mediaFilename];
-    card.mediaBase64Encoded = [mediaContent];
+    const note = createNote();
+    note.mediaNames = [mediaFilename];
+    note.mediaBase64Encoded = [mediaContent];
 
-    await expect(new Anki().storeMediaFiles([card])).resolves.toEqual(
-      storeResults,
-    );
+    // when
+    const stored = await new Anki().storeMediaFiles([note]);
 
+    // then
+    expect(stored).toEqual(storeResults);
     const actions = multiSubActions();
     expect(actions).toEqual([
       {
@@ -289,72 +393,48 @@ describe("Anki - media", () => {
       },
     ]);
   });
-
-  test("storeCodeHighlightMedias does nothing when files exist", async () => {
-    AnkiConnectMock.respondWith("file-content");
-    await expect(
-      new Anki().storeCodeHighlightMedias(),
-    ).resolves.toBeUndefined();
-    expect(AnkiConnectMock.requests).toHaveLength(1);
-    expect(AnkiConnectMock.requests[0].action).toBe("retrieveMediaFile");
-  });
-
-  test("storeCodeHighlightMedias stores the three files when missing", async () => {
-    const highlightStoreResults: unknown[] = [null, null, null];
-    const expectedHighlightFiles = [
-      "_highlight.js",
-      "_highlightInit.js",
-      "_highlight.css",
-    ];
-    AnkiConnectMock.setResponder((request) =>
-      request.action === "retrieveMediaFile"
-        ? { result: null, error: null }
-        : { result: highlightStoreResults, error: null },
-    );
-    await expect(
-      new Anki().storeCodeHighlightMedias(),
-    ).resolves.toEqual(highlightStoreResults);
-
-    expect(AnkiConnectMock.requests).toHaveLength(2);
-    const actions = lastMultiSubActions();
-    expect(actions.map((a) => a.action)).toEqual([
-      "storeMediaFile",
-      "storeMediaFile",
-      "storeMediaFile",
-    ]);
-    const filenames = actions.map(
-      (a) => (a.params as Record<string, string>)["filename"],
-    );
-    expect(filenames).toEqual(expectedHighlightFiles);
-  });
 });
 
-describe("Anki - addCards", () => {
-  test("batch success resolves the note ids", async () => {
+describe("Anki - addNotes", () => {
+  test("given a working batch when added then resolves the note ids", async () => {
+    // given
     const createdNoteIds = [101, 102];
     AnkiConnectMock.respondWith(createdNoteIds);
-    const ids = await new Anki().addCards([createCard(), createCard()]);
 
+    const newNotes = [createNote(), createNote()];
+
+    // when
+    const ids = await new Anki().addNotes(newNotes);
+
+    // then
     expect(ids).toEqual(createdNoteIds);
     expect(AnkiConnectMock.requests).toHaveLength(1);
-    const request = AnkiConnectMock.requests[0];
+    const request = required(AnkiConnectMock.requests[0], "request");
     expect(request.action).toBe("addNotes");
     const notes = request.params["notes"] as Array<Record<string, unknown>>;
     expect(notes).toHaveLength(createdNoteIds.length);
   });
 
-  test("partial per-note errors still resolve the result array", async () => {
+  test("given per-note errors when added then still resolves the result array", async () => {
+    // given
     const partialResponse: Record<string, unknown> = {
       result: [null, 102],
       error: ["duplicate", null],
     };
     AnkiConnectMock.setResponder(() => partialResponse);
-    const ids = await new Anki().addCards([createCard(), createCard()]);
+
+    const newNotes = [createNote(), createNote()];
+
+    // when
+    const ids = await new Anki().addNotes(newNotes);
+
+    // then
     expect(ids).toEqual([null, 102]);
     expect(AnkiConnectMock.requests).toHaveLength(1);
   });
 
-  test("failed batch falls back to one note at a time", async () => {
+  test("given a failed batch when added then falls back to one note at a time", async () => {
+    // given
     const batchError = "batch failed";
     const singleNoteId = 777;
     AnkiConnectMock.setResponder((request) => {
@@ -365,8 +445,12 @@ describe("Anki - addCards", () => {
       return { result: [singleNoteId], error: null };
     });
 
-    const ids = await new Anki().addCards([createCard(), createCard()]);
+    const newNotes = [createNote(), createNote()];
 
+    // when
+    const ids = await new Anki().addNotes(newNotes);
+
+    // then
     expect(ids).toEqual([singleNoteId, singleNoteId]);
     expect(AnkiConnectMock.requests).toHaveLength(3);
     for (const single of AnkiConnectMock.requests.slice(1)) {
@@ -374,30 +458,40 @@ describe("Anki - addCards", () => {
     }
   });
 
-  test("failed single notes resolve to null", async () => {
+  test("given failing singles when added then resolves failure sentinels", async () => {
+    // given
     const alwaysFailingResponse: Record<string, unknown> = {
       result: null,
       error: "boom",
     };
     AnkiConnectMock.setResponder(() => alwaysFailingResponse);
-    const ids = await new Anki().addCards([createCard(), createCard()]);
-    expect(ids).toEqual([null, null]);
+
+    const newNotes = [createNote(), createNote()];
+
+    // when
+    const ids = await new Anki().addNotes(newNotes);
+
+    // then
+    expect(ids).toEqual([-1, -1]);
   });
 });
 
-describe("Anki - updateCards", () => {
-  test("updates fields, merges tags and moves the deck", async () => {
+describe("Anki - updateNotes", () => {
+  test("given changed tags when updated then updates fields merges tags and moves the deck", async () => {
+    // given
     AnkiConnectMock.respondWith([null, null, null, null]);
-    const card = createCard();
+    const note = createNote();
     const tagsInAnki = ["a", "b"];
     const tagsInObsidian = ["b", "c"];
     const addedTag = "c";
     const removedTag = "a";
-    card.oldTags = tagsInAnki;
-    card.tags = tagsInObsidian;
+    note.oldTags = tagsInAnki;
+    note.tags = tagsInObsidian;
 
-    await new Anki().updateCards([card]);
+    // when
+    await new Anki().updateNotes([note]);
 
+    // then
     const actions = multiSubActions();
     expect(actions.map((a) => a.action)).toEqual([
       "updateNoteFields",
@@ -405,19 +499,22 @@ describe("Anki - updateCards", () => {
       "removeTags",
       "changeDeck",
     ]);
-    const note = actions[0].params["note"] as Record<string, unknown>;
-    expect(note["id"]).toBe(card.id);
-    expect(actions[1].params).toMatchObject({
-      notes: [card.id],
+    const payload = required(actions[0], "action").params["note"] as Record<
+      string,
+      unknown
+    >;
+    expect(payload["id"]).toBe(note.noteId);
+    expect(required(actions[1], "action").params).toMatchObject({
+      notes: [note.noteId],
       tags: addedTag,
     });
-    expect(actions[2].params).toMatchObject({
-      notes: [card.id],
+    expect(required(actions[2], "action").params).toMatchObject({
+      notes: [note.noteId],
       tags: removedTag,
     });
-    expect(actions[3].params).toMatchObject({
-      cards: [card.id],
-      deck: card.deckName,
+    expect(required(actions[3], "action").params).toMatchObject({
+      cards: [note.noteId],
+      deck: note.deckName,
     });
   });
 });

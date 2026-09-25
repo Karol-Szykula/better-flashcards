@@ -3,7 +3,7 @@ export interface EmbedElementMock {
   src: string;
 }
 
-export function createActiveDocumentMock(embeds: EmbedElementMock[] = []) {
+function createActiveDocumentMock(embeds: EmbedElementMock[] = []) {
   const elements = embeds.map((embed) => ({
     getAttribute: (name: string) => (name === "src" ? embed.src : null),
     outerHTML: embed.outerHTML,

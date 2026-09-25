@@ -1,35 +1,28 @@
-import {
-  useEffect,
-  useState,
-  type ChangeEvent,
-  type JSX,
-} from "react";
+import { useEffect, useState, type ChangeEvent, type JSX } from "react";
+import { mergeClasses } from "src/gui/classes";
 import type { Anki } from "src/services/anki";
+import { startAsyncLoad } from "src/gui/import-wizard/start-async-load";
+import type { DeckModel } from "src/services/import";
 import type {
-  DeckModel,
   FieldMapping as FieldMap,
   FieldTarget,
-} from "src/services/import";
-import {
-  discoverDeckModels,
-  fieldTargets,
-  isKnownModel,
-  resolveFieldMapping,
-} from "src/services/import";
+} from "src/entities/field-mapping";
+import { fieldTargets, resolveFieldMapping } from "src/entities/field-mapping";
+import { discoverDeckModels, isKnownModel } from "src/services/import";
+import { builtInPackFor } from "src/services/note-packs";
 import {
   commonWizardClasses,
   fieldMappingClasses,
-  mergeClasses,
 } from "src/gui/import-wizard/classes";
 import { List } from "src/gui/import-wizard/list/List";
 import { ListRow } from "src/gui/import-wizard/list/ListRow";
 
 export interface FieldMappingProps {
-  anki: Anki;
-  className?: string;
-  deckName: string;
-  onMappingsChange: (mappings: Record<string, FieldMap>) => void;
-  savedMappings: Record<string, Record<string, string>>;
+  readonly anki: Anki;
+  readonly className?: string;
+  readonly deckName: string;
+  readonly onMappingsChange: (mappings: Record<string, FieldMap>) => void;
+  readonly savedMappings: Record<string, Record<string, string>>;
 }
 
 export function FieldMapping({
@@ -44,36 +37,32 @@ export function FieldMapping({
   const [mappings, setMappings] = useState<Record<string, FieldMap>>({});
   const [loadError, setLoadError] = useState("");
 
-  const loadFieldMappings = () => {
-    let cancelled = false;
-    void (async () => {
+  const loadFieldMappings = (): (() => void) =>
+    startAsyncLoad(async (isLive) => {
       try {
         const discovered = await discoverDeckModels(anki, deckName);
-        if (cancelled) {
+        if (!isLive()) {
           return;
         }
         const initial: Record<string, FieldMap> = {};
         for (const model of discovered) {
+          const saved = savedMappings[model.modelName];
+          const pack =
+            saved === undefined ? builtInPackFor(model.modelName) : undefined;
           initial[model.modelName] = resolveFieldMapping(
             model.fields,
-            savedMappings[model.modelName]
+            pack?.mapping ?? saved,
           );
         }
         setModels(discovered);
         setMappings(initial);
         onMappingsChange(initial);
       } catch {
-        if (!cancelled) {
-          setLoadError(
-            "Error: Anki must be open with AnkiConnect installed."
-          );
+        if (isLive()) {
+          setLoadError("Error: Anki must be open with AnkiConnect installed.");
         }
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  };
+    });
 
   useEffect(loadFieldMappings, [anki, deckName]);
 
@@ -106,7 +95,10 @@ export function FieldMapping({
           <h4>
             {model.modelName}
             {isKnownModel(model.modelName) && (
-              <span className={fieldMappingClasses.modelRecognized}> Recognized</span>
+              <span className={fieldMappingClasses.modelRecognized}>
+                {" "}
+                Recognized
+              </span>
             )}
           </h4>
           <List

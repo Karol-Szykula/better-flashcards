@@ -1,0 +1,9 @@
+.github/
+coverage/
+dist/
+docs/
+main.js
+node_modules/
+pnpm-lock.yaml
+*.md
+styles.css

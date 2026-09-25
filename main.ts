@@ -1,191 +1,224 @@
-import { addIcon, Notice, Plugin, TFile } from "obsidian";
-import { ISettings } from "src/conf/settings";
+import { addIcon, Notice, Plugin } from "obsidian";
+import type { ISettings } from "src/conf/settings";
+import { normalizeSettings } from "src/conf/normalize-settings";
 import { SettingsTab } from "src/gui/settings-tab";
-import { ImportModal } from "src/gui/import-modal";
-import { CardsService } from "src/services/cards";
+import { ImportModal } from "src/gui/import-wizard/import-modal";
 import { Anki } from "src/services/anki";
-import { noticeTimeout, flashcardsIcon } from "src/conf/constants";
+import { logger } from "src/services/logger";
+import { describeUnknown } from "src/utils";
+import {
+  clozeModelName,
+  flashcardsIcon,
+  noteFormLanguage,
+  noticeTimeout,
+} from "src/conf/constants";
+import { createNoteFormHandler } from "src/gui/note-form/processor";
+import { registerNoteFormAutoPreview } from "src/gui/note-form/auto-preview";
+import { executeSync, formatSyncReport } from "src/services/sync";
+import { createNoteFormFile, noteFormBlock } from "src/gui/note-form/commands";
+import { executeExport, formatExportReport } from "src/services/export";
+import {
+  forgetRecordsWithoutFiles,
+  formatPurgeLedgerReport,
+} from "src/services/ledger";
+
+const exportToAnkiCommandName = "Export to Anki";
+const syncCommandName = "Sync";
+const importDeckCommandName = "Import deck from Anki";
+const purgeLedgerCommandName = "Purge ledger";
+const insertNoteFormCommandName = "Insert note form";
+const newFlashcardFileCommandName = "New note file";
+const newClozeNoteFileCommandName = "New cloze note file";
 
 export default class ObsidianFlashcard extends Plugin {
-  settings: ISettings;
-  private cardsService: CardsService;
+  override settings!: ISettings;
 
-  async onload() {
+  override async onload() {
     addIcon("flashcards", flashcardsIcon);
 
-    // TODO test when file did not insert flashcards, but one of them is in Anki already
     const anki = new Anki();
-    this.settings = Object.assign(
-      this.getDefaultSettings(),
-      (await this.loadData()) || {}
-    );
-    this.cardsService = new CardsService(this.app, this.settings);
+    this.settings = normalizeSettings(await this.loadData());
 
     const statusBar = this.addStatusBarItem();
 
-    this.addCommand({
-      id: "generate-flashcard-current-file",
-      name: "Generate for the current file",
-      checkCallback: (checking: boolean) => {
-        const activeFile = this.app.workspace.getActiveFile();
-        if (activeFile) {
-          if (!checking) {
-            this.generateCards(activeFile);
-          }
-          return true;
-        }
-        return false;
-      },
-    });
-
-    this.addCommand({
-      id: "generate-flashcard-all-files",
-      name: "Generate for all files in vault",
-      callback: () => {
-        void this.generateCardsForVault();
-      },
-    });
-
-    this.addCommand({
-      id: "import-deck-from-anki",
-      name: "Import deck from Anki",
-      callback: () => {
-        new ImportModal(this.app, this.settings, () =>
-          this.saveData(this.settings)
-        ).setTitle("Import deck from Anki").open();
-      },
-    });
-
-    this.addRibbonIcon("flashcards", "Generate flashcards", () => {
-      const activeFile = this.app.workspace.getActiveFile();
-      if (activeFile) {
-        this.generateCards(activeFile);
-      } else {
-        new Notice("Open a file before");
-      }
-    });
-
     this.addSettingTab(new SettingsTab(this.app, this));
 
-    this.registerInterval(
-      window.setInterval(
-        () =>
-          anki
-            .ping()
-            .then(() => statusBar.setText("Anki"))
-            .catch(() => statusBar.setText("")),
-        15 * 1000,
+    this.registerNoteFormRendering();
+    this.registerImportCommand();
+    this.registerExportCommand();
+    this.registerSyncCommand();
+    this.registerPurgeLedgerCommand();
+    this.registerNoteFormCommands();
+    this.startAnkiStatusPolling(anki, statusBar);
+  }
+
+  private registerNoteFormRendering(): void {
+    this.registerMarkdownCodeBlockProcessor(
+      noteFormLanguage,
+      createNoteFormHandler(this.app.vault, (noteId) =>
+        noteId === undefined
+          ? undefined
+          : this.settings.noteLifecycle[noteId]?.status,
       ),
     );
+    registerNoteFormAutoPreview(this);
   }
 
-  async onunload() {
-    await this.saveData(this.settings);
+  private registerImportCommand(): void {
+    this.addCommand({
+      id: "import-deck-from-anki",
+      name: importDeckCommandName,
+      callback: () => {
+        new ImportModal(this.app, this.settings, () =>
+          this.saveData(this.settings),
+        )
+          .setTitle("Import deck from Anki")
+          .open();
+      },
+    });
   }
 
-  private getDefaultSettings(): ISettings {
-    return {
-      contextAwareMode: true,
-      sourceSupport: false,
-      codeHighlightSupport: false,
-      inlineID: false,
-      contextSeparator: " > ",
-      deck: "Default",
-      folderBasedDeck: true,
-      flashcardsTag: "card",
-      inlineSeparator: "::",
-      inlineSeparatorReverse: ":::",
-      defaultAnkiTag: "obsidian",
-      ankiConnectPermission: false,
-      ignoredDirectories: "",
-      lastSyncRev: 0,
-      fieldMappings: {},
+  private registerExportCommand(): void {
+    const exportToAnki = () => {
+      void this.runExport();
     };
+    this.addRibbonIcon("flashcards", exportToAnkiCommandName, exportToAnki);
+    this.addCommand({
+      id: "export-to-anki",
+      name: exportToAnkiCommandName,
+      callback: exportToAnki,
+    });
   }
 
-  private generateCards(activeFile: TFile) {
-    this.cardsService
-      .execute(activeFile)
-      .then((res) => {
-        if (!res) {
-          new Notice("Error: Something went wrong", noticeTimeout);
-          return;
-        }
-        for (const r of res) {
-          new Notice(r, noticeTimeout);
-        }
-      })
-      .catch((err) => {
-        console.error(err);
-        new Notice(`Error: ${err}`, noticeTimeout);
-      });
-  }
-
-  private isIgnoredPath(filePath: string): boolean {
-    const ignored = (this.settings.ignoredDirectories || "")
-      .split(",")
-      .map((d) => d.trim())
-      .filter((d) => d.length > 0);
-    return ignored.some((dir) => filePath.startsWith(dir + "/") || filePath.startsWith(dir + "\\"));
-  }
-
-  private async generateCardsForVault() {
-    const allFiles = this.app.vault.getMarkdownFiles();
-    const files = allFiles.filter((f) => !this.isIgnoredPath(f.path));
-
+  private async runExport(): Promise<void> {
     try {
-      await this.cardsService.setup();
-    } catch (err) {
-      console.error(err);
-      new Notice("Error: Anki must be open with AnkiConnect installed.", noticeTimeout);
+      await new Anki().ping();
+    } catch {
+      new Notice(
+        "Error: Anki must be open with AnkiConnect installed.",
+        noticeTimeout,
+      );
       return;
     }
-
-    let created = 0;
-    let updated = 0;
-    let skipped = 0;
-    let failed = 0;
-    const tag = this.settings.flashcardsTag;
-    const sep = this.settings.inlineSeparator;
-
-    new Notice(`Flashcards: scanning ${files.length} files...`, noticeTimeout);
-
-    for (const file of files) {
-      try {
-        const content = await this.app.vault.cachedRead(file);
-        const hasCardTag = content.includes(`#${tag}`);
-        const hasInline = content.includes(sep);
-        const hasCloze = content.includes("==") || content.includes("{");
-        const hasExistingIds = /\^\d{13}/.test(content);
-        if (!hasCardTag && !hasInline && !hasExistingIds && !hasCloze) {
-          skipped++;
-          continue;
-        }
-        // Only check cloze-heavy files if they also have a card tag or existing IDs
-        if (!hasCardTag && !hasInline && !hasExistingIds && hasCloze) {
-          skipped++;
-          continue;
-        }
-
-        const res = await this.cardsService.execute(file, true);
-        if (!res) continue;
-        for (const r of res) {
-          if (r.startsWith("Inserted")) created++;
-          else if (r.startsWith("Updated")) updated++;
-          else if (r.startsWith("Error")) {
-            console.warn(`Flashcards: [${file.path}] ${r}`);
-            failed++;
-          }
-        }
-      } catch (err) {
-        console.error(`Flashcards: [${file.path}] uncaught error`, err);
-        failed++;
-      }
+    try {
+      const report = await executeExport(
+        new Anki(),
+        this.app.vault,
+        this.settings,
+        this.settings.ignoredDirectories,
+      );
+      await this.saveData(this.settings);
+      new Notice(formatExportReport(report), noticeTimeout);
+    } catch (error) {
+      new Notice(`Export failed: ${describeUnknown(error)}`, noticeTimeout);
     }
+  }
 
-    new Notice(
-      `Flashcards: done. ${files.length - skipped} files with cards, ${created} created, ${updated} updated, ${failed} errors.`,
-      noticeTimeout
+  private registerSyncCommand(): void {
+    this.addCommand({
+      id: "sync-with-anki",
+      name: syncCommandName,
+      callback: () => {
+        void this.runSync();
+      },
+    });
+  }
+
+  private async runSync(): Promise<void> {
+    const snapshots = this.settings.deckImportSnapshots;
+    if (Object.keys(snapshots).length === 0) {
+      new Notice(
+        "No wizard import yet. Run Import deck from Anki first.",
+        noticeTimeout,
+      );
+      return;
+    }
+    try {
+      await new Anki().ping();
+    } catch {
+      new Notice(
+        "Error: Anki must be open with AnkiConnect installed.",
+        noticeTimeout,
+      );
+      return;
+    }
+    try {
+      const report = await executeSync(
+        new Anki(),
+        this.app.vault,
+        this.settings,
+      );
+      await this.saveData(this.settings);
+      new Notice(formatSyncReport(report), noticeTimeout);
+    } catch (error) {
+      new Notice(`Sync failed: ${describeUnknown(error)}`, noticeTimeout);
+    }
+  }
+
+  private registerPurgeLedgerCommand(): void {
+    this.addCommand({
+      id: "purge-ledger",
+      name: purgeLedgerCommandName,
+      callback: () => {
+        void this.runPurgeLedger();
+      },
+    });
+  }
+
+  private async runPurgeLedger(): Promise<void> {
+    try {
+      const report = await forgetRecordsWithoutFiles(
+        this.app.vault,
+        this.settings,
+      );
+      await this.saveData(this.settings);
+      new Notice(formatPurgeLedgerReport(report), noticeTimeout);
+    } catch (error) {
+      new Notice(
+        `Purge ledger failed: ${describeUnknown(error)}`,
+        noticeTimeout,
+      );
+    }
+  }
+
+  private registerNoteFormCommands(): void {
+    this.addCommand({
+      id: "insert-note-form",
+      name: insertNoteFormCommandName,
+      editorCallback: (editor) => {
+        editor.replaceSelection(noteFormBlock());
+      },
+    });
+    this.addCommand({
+      id: "new-note-form-file",
+      name: newFlashcardFileCommandName,
+      callback: () => {
+        void createNoteFormFile(this.app);
+      },
+    });
+    this.addCommand({
+      id: "new-cloze-note-file",
+      name: newClozeNoteFileCommandName,
+      callback: () => {
+        void createNoteFormFile(this.app, clozeModelName);
+      },
+    });
+  }
+
+  private startAnkiStatusPolling(anki: Anki, statusBar: HTMLElement): void {
+    this.registerInterval(
+      window.setInterval(() => {
+        void anki
+          .ping()
+          .then(() => statusBar.setText("Anki"))
+          .catch(() => statusBar.setText(""));
+      }, 15 * 1000),
     );
+  }
+
+  override onunload(): void {
+    void this.saveData(this.settings).catch((error: unknown) => {
+      logger.error("saving settings on unload failed", error);
+    });
   }
 }

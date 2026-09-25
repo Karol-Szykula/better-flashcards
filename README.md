@@ -11,7 +11,6 @@ This plugin is a fork of [reuseman/flashcards-obsidian](https://github.com/reuse
 
 🗃️ Simple flashcards with **#card**  
 🎴 Reversed flashcards with **#card-reverse** or **#card/reverse**  
-📅 Spaced-only cards with **#card-spaced** or **#card/spaced**  
 ✍️ Inline style with **Question::Answer**  
 ✍️ Inline style reversed with **Question:::Answer**  
 📃 Cloze with **==Highlight==** or **{Curly brackets}** or  **{2:Cloze}**   

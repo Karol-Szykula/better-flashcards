@@ -45,105 +45,179 @@ function storedFile(app: App, path: string): TFile {
 }
 
 describe("deckAttachmentsFolder", () => {
-  test("nests attachments under the deck folder", async () => {
-    expect(deckAttachmentsFolder("Medicine")).toBe("Medicine/attachments");
+  test("given a deck name when resolved then nests attachments under it", async () => {
+    // when
+    const folder = deckAttachmentsFolder("Medicine");
+
+    // then
+    expect(folder).toBe("Medicine/attachments");
   });
 
-  test("maps deck hierarchy to nested folders", async () => {
-    expect(deckAttachmentsFolder("Medicine::Anatomy")).toBe(
-      "Medicine/Anatomy/attachments"
-    );
+  test("given a deck hierarchy when resolved then maps it to nested folders", async () => {
+    // when
+    const folder = deckAttachmentsFolder("Medicine::Anatomy");
+
+    // then
+    expect(folder).toBe("Medicine/Anatomy/attachments");
   });
 });
 
 describe("resolveMediaPath", () => {
-  test("places the first file directly in attachments", async () => {
-    expect(resolveMediaPath("Medicine", "image.png", new Set())).toBe(
-      "Medicine/attachments/image.png"
-    );
+  test("given a free filename when resolved then places it directly in attachments", async () => {
+    // given
+    const takenPaths = new Set<string>();
+
+    // when
+    const targetPath = resolveMediaPath("Medicine", "image.png", takenPaths);
+
+    // then
+    expect(targetPath).toBe("Medicine/attachments/image.png");
   });
 
-  test("suffixes colliding filenames", async () => {
+  test("given colliding filenames when resolved then suffixes them in order", async () => {
+    // given
     const takenPaths = new Set<string>();
-    expect(resolveMediaPath("Medicine", "image.png", takenPaths)).toBe(
-      "Medicine/attachments/image.png"
-    );
-    expect(resolveMediaPath("Medicine", "image.png", takenPaths)).toBe(
-      "Medicine/attachments/image-1.png"
-    );
-    expect(resolveMediaPath("Medicine", "image.png", takenPaths)).toBe(
-      "Medicine/attachments/image-2.png"
-    );
+
+    // when
+    const firstPath = resolveMediaPath("Medicine", "image.png", takenPaths);
+    const secondPath = resolveMediaPath("Medicine", "image.png", takenPaths);
+    const thirdPath = resolveMediaPath("Medicine", "image.png", takenPaths);
+
+    // then
+    expect(firstPath).toBe("Medicine/attachments/image.png");
+    expect(secondPath).toBe("Medicine/attachments/image-1.png");
+    expect(thirdPath).toBe("Medicine/attachments/image-2.png");
   });
 
-  test("suffixes extensionless filenames", async () => {
+  test("given an extensionless filename when resolved then suffixes its stem", async () => {
+    // given
     const takenPaths = new Set<string>();
-    expect(resolveMediaPath("Medicine", "README", takenPaths)).toBe(
-      "Medicine/attachments/README"
-    );
-    expect(resolveMediaPath("Medicine", "README", takenPaths)).toBe(
-      "Medicine/attachments/README-1"
-    );
+
+    // when
+    const firstPath = resolveMediaPath("Medicine", "README", takenPaths);
+    const secondPath = resolveMediaPath("Medicine", "README", takenPaths);
+
+    // then
+    expect(firstPath).toBe("Medicine/attachments/README");
+    expect(secondPath).toBe("Medicine/attachments/README-1");
   });
 });
 
 describe("decodeBase64", () => {
-  test("decodes base64 into bytes", async () => {
-    expect(Array.from(new Uint8Array(decodeBase64(sampleBase64)))).toEqual(
-      sampleBytes
-    );
+  test("given base64 input when decoded then returns bytes", async () => {
+    // when
+    const decoded = Array.from(new Uint8Array(decodeBase64(sampleBase64)));
+
+    // then
+    expect(decoded).toEqual(sampleBytes);
   });
 });
 
 describe("importDeckMedia", () => {
-  test("retrieves files and writes them to attachments", async () => {
+  test("given media in Anki when imported then retrieves them once and writes to attachments", async () => {
+    // given
     const app = App.createConfigured__({ files: {} });
     respondWithMedia({ "a.png": sampleBase64, "b.png": sampleBase64 });
 
-    const imported = await importDeckMedia(new Anki(), (app.vault as unknown as ObsidianVault), "Medicine", [
-      "a.png",
-      "b.png",
-      "a.png",
-    ]);
+    // when
+    const imported = await importDeckMedia(
+      new Anki(),
+      app.vault as unknown as ObsidianVault,
+      "Medicine",
+      ["a.png", "b.png", "a.png"],
+    );
 
+    // then
     expect(imported).toEqual({
       "a.png": "Medicine/attachments/a.png",
       "b.png": "Medicine/attachments/b.png",
     });
     const retrieved = AnkiConnectMock.requests.filter(
-      (r) => r.action === "retrieveMediaFile"
+      (r) => r.action === "retrieveMediaFile",
     );
     expect(retrieved).toHaveLength(2);
     const stored = await app.vault.readBinary(
-      storedFile(app, "Medicine/attachments/a.png")
+      storedFile(app, "Medicine/attachments/a.png"),
     );
     expect(Array.from(new Uint8Array(stored))).toEqual(sampleBytes);
   });
 
-  test("skips files missing in Anki", async () => {
+  test("given a missing file when imported then skips it without writing", async () => {
+    // given
     const app = App.createConfigured__({ files: {} });
     respondWithMedia({});
 
-    const imported = await importDeckMedia(new Anki(), (app.vault as unknown as ObsidianVault), "Medicine", [
-      "gone.png",
-    ]);
+    // when
+    const imported = await importDeckMedia(
+      new Anki(),
+      app.vault as unknown as ObsidianVault,
+      "Medicine",
+      ["gone.png"],
+    );
 
+    // then
     expect(imported).toEqual({});
     expect(
-      app.vault.getAbstractFileByPath("Medicine/attachments/gone.png")
+      app.vault.getAbstractFileByPath("Medicine/attachments/gone.png"),
     ).toBeNull();
   });
 
-  test("suffixes files colliding with existing vault files", async () => {
+  test("given no media when imported then leaves the vault untouched", async () => {
+    // given
+    const app = App.createConfigured__({ files: {} });
+    const createFolder = jest.spyOn(app.vault, "createFolder");
+    respondWithMedia({ "a.png": sampleBase64 });
+
+    // when
+    const imported = await importDeckMedia(
+      new Anki(),
+      app.vault as unknown as ObsidianVault,
+      "Medicine",
+      [],
+    );
+
+    // then
+    expect(imported).toEqual({});
+    expect(createFolder).not.toHaveBeenCalled();
+    expect(app.vault.getAbstractFileByPath("Medicine")).toBeNull();
+  });
+
+  test("given only missing files when imported then skips folder creation", async () => {
+    // given
+    const app = App.createConfigured__({ files: {} });
+    const createFolder = jest.spyOn(app.vault, "createFolder");
+    respondWithMedia({});
+
+    // when
+    const imported = await importDeckMedia(
+      new Anki(),
+      app.vault as unknown as ObsidianVault,
+      "Medicine",
+      ["gone.png"],
+    );
+
+    // then
+    expect(imported).toEqual({});
+    expect(createFolder).not.toHaveBeenCalled();
+    expect(app.vault.getAbstractFileByPath("Medicine")).toBeNull();
+  });
+
+  test("given an existing vault file when imported then suffixes and preserves the old file", async () => {
+    // given
     const app = App.createConfigured__({
       files: { "Medicine/attachments/a.png": "old" },
     });
     respondWithMedia({ "a.png": sampleBase64 });
 
-    const imported = await importDeckMedia(new Anki(), (app.vault as unknown as ObsidianVault), "Medicine", [
-      "a.png",
-    ]);
+    // when
+    const imported = await importDeckMedia(
+      new Anki(),
+      app.vault as unknown as ObsidianVault,
+      "Medicine",
+      ["a.png"],
+    );
 
+    // then
     expect(imported).toEqual({ "a.png": "Medicine/attachments/a-1.png" });
     const untouched = storedFile(app, "Medicine/attachments/a.png");
     expect(await app.vault.read(untouched)).toBe("old");
@@ -151,15 +225,20 @@ describe("importDeckMedia", () => {
 });
 
 describe("rewriteMediaReferences", () => {
-  test("replaces image and sound references with wiki links", async () => {
+  test("given image and sound references when rewritten then replaces them with wiki links", async () => {
+    // given
     const content =
       '<p><img src="a.png"> and <img src="a.png" alt="x"> plus [sound:b.mp3] and <img src="other.png"></p>';
+
+    // when
     const rewritten = rewriteMediaReferences(content, {
       "a.png": "Medicine/attachments/a.png",
       "b.mp3": "Medicine/attachments/b.mp3",
     });
+
+    // then
     expect(rewritten).toBe(
-      "<p>![[Medicine/attachments/a.png]] and ![[Medicine/attachments/a.png]] plus ![[Medicine/attachments/b.mp3]] and <img src=\"other.png\"></p>"
+      '<p>![[Medicine/attachments/a.png]] and ![[Medicine/attachments/a.png]] plus ![[Medicine/attachments/b.mp3]] and <img src="other.png"></p>',
     );
   });
 });

@@ -1,13 +1,21 @@
-import type { CSSProperties, JSX, ReactNode } from "react";
+import {
+  cloneElement,
+  isValidElement,
+  type CSSProperties,
+  type JSX,
+  type MouseEvent,
+  type ReactElement,
+  type ReactNode,
+} from "react";
+import { mergeClasses } from "src/gui/classes";
 import { listClasses } from "src/gui/import-wizard/listClasses";
-import { mergeClasses } from "src/gui/import-wizard/classes";
 
 export interface ListRowProps {
-  cells: ReactNode[];
-  className?: string;
-  disabled?: boolean;
-  onSelect?: () => void;
-  style?: CSSProperties;
+  readonly cells: ReactNode[];
+  readonly className?: string;
+  readonly disabled?: boolean;
+  readonly onSelect?: () => void;
+  readonly style?: CSSProperties;
 }
 
 export function ListRow({
@@ -20,8 +28,11 @@ export function ListRow({
   return (
     <div
       className={mergeClasses(listClasses.listRow, className)}
-      onClick={() => {
-        if (!disabled && onSelect) {
+      onClick={(event: MouseEvent<HTMLDivElement>) => {
+        const interactive = (event.target as HTMLElement).closest(
+          "input, select, button, a",
+        );
+        if (!disabled && onSelect && !interactive) {
           onSelect();
         }
       }}
@@ -37,18 +48,48 @@ export function ListRow({
 }
 
 export interface LabeledControlProps {
-  className?: string;
-  control: ReactNode;
-  label: ReactNode;
-  tooltip?: string;
+  readonly className?: string;
+  readonly control: ReactNode;
+  readonly controlLabel?: string;
+  readonly disabled?: boolean;
+  readonly label: ReactNode;
+  readonly tooltip?: string;
+}
+
+function accessibleControl(
+  control: ReactNode,
+  controlLabel?: string,
+): ReactNode {
+  return isValidElement(control) && controlLabel !== undefined
+    ? cloneElement(control as ReactElement<Record<string, unknown>>, {
+        "aria-label": controlLabel,
+      })
+    : control;
 }
 
 export function LabeledControl({
   control,
+  controlLabel,
+  disabled = false,
   label,
   tooltip,
   className,
 }: LabeledControlProps): JSX.Element {
+  if (disabled) {
+    return (
+      <span
+        className={mergeClasses(
+          listClasses.labeledControl,
+          listClasses.labeledControlDisabled,
+          className,
+        )}
+        title={tooltip}
+      >
+        {accessibleControl(control, controlLabel)}
+        <span>{label}</span>
+      </span>
+    );
+  }
   return (
     <label
       className={mergeClasses(listClasses.labeledControl, className)}

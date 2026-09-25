@@ -14,8 +14,36 @@ export interface AnkiConnectRequest {
 }
 
 export type AnkiResponder = (
-  request: AnkiConnectRequest
+  request: AnkiConnectRequest,
 ) => Record<string, unknown>;
+
+/**
+ * Officially supported AnkiConnect actions this plugin uses. Anki answers
+ * "unsupported action" for everything else, so the mock does too - otherwise a
+ * test could pass against an action that no longer exists in AnkiConnect
+ * (modelNamesAndFieldNames was one, removed upstream, and it broke Export).
+ */
+export const supportedAnkiActions: ReadonlySet<string> = new Set([
+  "addNotes",
+  "addTags",
+  "cardsInfo",
+  "changeDeck",
+  "createDeck",
+  "createModel",
+  "deckNames",
+  "deleteNotes",
+  "findNotes",
+  "modelFieldNames",
+  "modelNames",
+  "multi",
+  "notesInfo",
+  "removeTags",
+  "requestPermission",
+  "retrieveMediaFile",
+  "storeMediaFile",
+  "updateNoteFields",
+  "version",
+]);
 
 const requests: AnkiConnectRequest[] = [];
 let responder: AnkiResponder = () => ({ result: null, error: null });
@@ -46,7 +74,7 @@ class MockXMLHttpRequest {
       this.dispatch("error");
       return;
     }
-    this.responseText = JSON.stringify(responder(request));
+    this.responseText = JSON.stringify(AnkiConnectMock.answer(request));
     this.dispatch("load");
   }
 
@@ -73,6 +101,14 @@ export const AnkiConnectMock = {
     requests.length = 0;
     responder = () => ({ result: null, error: null });
     connectionDown = false;
+  },
+
+  /** Answers a request the way AnkiConnect would, honouring the action list. */
+  answer(request: AnkiConnectRequest): Record<string, unknown> {
+    if (!supportedAnkiActions.has(request.action)) {
+      return { error: "unsupported action", result: null };
+    }
+    return responder(request);
   },
 
   /** Sets a custom responder for upcoming requests. */

@@ -1,17 +1,17 @@
+import type { FieldMapping } from "src/entities/field-mapping";
+import type { NoteLifecycleRecord } from "src/services/note-lifecycle";
+
+export interface DeckImportSnapshot {
+  deckName: string;
+  fieldMappings: Record<string, FieldMapping>;
+  importedAt: number;
+}
+
 export interface ISettings {
   ankiConnectPermission: boolean;
-  codeHighlightSupport: boolean;
-  contextAwareMode: boolean;
-  contextSeparator: string;
-  deck: string;
-  defaultAnkiTag: string;
+  deckImportSnapshots: Record<string, DeckImportSnapshot>;
   fieldMappings: Record<string, Record<string, string>>;
-  flashcardsTag: string;
-  folderBasedDeck: boolean;
   ignoredDirectories: string;
-  inlineID: boolean;
-  inlineSeparator: string;
-  inlineSeparatorReverse: string;
   lastSyncRev: number;
-  sourceSupport: boolean;
+  noteLifecycle: Record<number, NoteLifecycleRecord>;
 }

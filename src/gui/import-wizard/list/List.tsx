@@ -1,16 +1,16 @@
 import type { JSX, ReactNode } from "react";
+import { mergeClasses } from "src/gui/classes";
 import { listClasses } from "src/gui/import-wizard/listClasses";
-import { mergeClasses } from "src/gui/import-wizard/classes";
 
-export type ListDividers = "top" | "bottom" | "none";
+type ListDividers = "top" | "bottom" | "none";
 
 export interface ListProps {
-  children: ReactNode;
-  className?: string;
-  columns?: string[];
-  columnWidths?: string;
-  dividers?: ListDividers;
-  striped?: boolean;
+  readonly children: ReactNode;
+  readonly className?: string;
+  readonly columns?: string[];
+  readonly columnWidths?: string;
+  readonly dividers?: ListDividers;
+  readonly striped?: boolean;
 }
 
 function dividersClass(dividers: ListDividers): string | undefined {
@@ -37,11 +37,9 @@ export function List({
         listClasses.list,
         dividersClass(dividers),
         striped ? listClasses.listStriped : undefined,
-        className
+        className,
       )}
-      style={
-        columnWidths ? { gridTemplateColumns: columnWidths } : undefined
-      }
+      style={columnWidths ? { gridTemplateColumns: columnWidths } : undefined}
     >
       {columns && columns.length > 0 && (
         <div className={listClasses.listHeader}>

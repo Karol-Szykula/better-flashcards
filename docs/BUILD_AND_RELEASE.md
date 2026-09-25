@@ -24,6 +24,26 @@ npm run build
 
 This creates `main.js` in the repository root. The plugin manifest is `manifest.json`.
 
+## Two entries, two bundles
+
+| Entry | Built by | Output | Contains the dev commands |
+| --- | --- | --- | --- |
+| `main.ts` | `npm run build` (esbuild) | `main.js` in the repository root, released | no |
+| `main.dev.ts` | `npm run dev` (rollup watcher) | `docs/test-vault/.obsidian/plugins/better-flashcards/main.js` | yes |
+
+`main.dev.ts` is a subclass of the plugin class that registers the developer
+commands (`Dev: reset plugin data`) after the normal ones. The release build
+starts from `main.ts`, which never imports that module, so the dev commands are
+not in the release bundle at all - not disabled, absent. Check it after a build:
+
+```bash
+npm run build && grep -c "reset plugin data" main.js
+```
+
+Zero means the dev code stayed out of the release bundle. The dev bundle always
+keeps the file name `main.js`, because that is the name Obsidian loads, even
+though the entry is `main.dev.ts`.
+
 ## Prepare release files
 
 Run:

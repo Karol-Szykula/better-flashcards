@@ -20,6 +20,7 @@ docs/test-vault/.obsidian/workspace.json
 docs/test-vault/.obsidian/workspace-mobile.json
 docs/test-vault/.obsidian/plugins/*/data.json
 docs/test-vault/.obsidian/plugins/*/.hotreload
+docs/test-vault/*
 
 # tests
 coverage/
@@ -44,4 +45,3 @@ move.sh
 # misc
 .env
 docs/test-vault/.obsidian/themes/
-.todo
