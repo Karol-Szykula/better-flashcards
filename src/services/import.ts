@@ -15,8 +15,12 @@ import { importDeckMedia, rewriteMediaReferences } from "src/services/media";
 import type { MediaPathMap } from "src/services/media";
 import { packForModel, type NotePack } from "src/services/note-packs";
 import {
+  decisionActFor,
+  isInScope,
+  syncDecisionFor,
+} from "src/services/sync-decision";
+import {
   classifyNoteLifecycle,
-  importActFor,
   transitionNoteLifecycle,
   type NoteLifecycleRecord,
   type NoteLifecycleStatus,
@@ -530,13 +534,13 @@ async function importDecision(
   for (const note of packable) {
     const status = await statusForImport(vault, request, note, yaml);
     const isForced = ankiWinsNoteIds.has(note.noteId);
-    const act = importActFor(status, isForced);
-    if (act === undefined) {
+    const act = decisionActFor("import", status, isForced);
+    if (!isInScope(act)) {
       countAsLeftToSync(status, decision);
       continue;
     }
     transitionNoteLifecycle(status, act);
-    if (isForced && importActFor(status) === undefined) {
+    if (isForced && !isInScope(syncDecisionFor("import", status).act)) {
       decision.forced += 1;
     }
     decision.importable.push(note);

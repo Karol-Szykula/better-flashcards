@@ -17,7 +17,6 @@ import {
 } from "src/services/note-push";
 import {
   classifyNoteLifecycle,
-  exportActFor,
   syncedCleanRecord,
   transitionNoteLifecycle,
   type NoteLifecycleRecord,
@@ -25,6 +24,7 @@ import {
 } from "src/services/note-lifecycle";
 import type { NotePack } from "src/services/note-packs";
 import { packForModel } from "src/services/note-packs";
+import { decisionActFor, isInScope } from "src/services/sync-decision";
 import { deckForPath, isIgnoredPath } from "src/services/vault";
 import { parseNoteForm } from "src/services/note-parser";
 import { obsidianYamlEngine, type YamlEngine } from "src/services/yaml-engine";
@@ -261,8 +261,8 @@ async function planBlock(
       ? undefined
       : context.settings.noteLifecycle[location.block.id];
   const status = await lifecycleStatusForBlock(location, anki, record);
-  const act = exportActFor(status);
-  if (act === undefined) {
+  const act = decisionActFor("export", status);
+  if (!isInScope(act)) {
     countSkip(plan.report, status);
     return;
   }

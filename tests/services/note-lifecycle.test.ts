@@ -5,8 +5,6 @@ import {
   NOTE_LIFECYCLE_EVENTS,
   NOTE_LIFECYCLE_STATUSES,
   classifyNoteLifecycle,
-  exportActFor,
-  importActFor,
   isForceDecisive,
   isImportSelectedByDefault,
   noteLifecycleMachine,
@@ -14,7 +12,6 @@ import {
   notePreviewStatusFor,
   resolveMissingFile,
   snapshotForStatus,
-  syncActFor,
   statusOfSnapshot,
   transitionNoteLifecycle,
   type NoteLifecycleEvent,
@@ -223,100 +220,6 @@ describe("noteLifecycleMermaid", () => {
   });
 });
 
-describe("importActFor", () => {
-  test.each([
-    ["ankiOnly.neverImported", "IMPORT"],
-    ["synced.clean", "CHECK"],
-    ["synced.ankiNewer", "PULL"],
-    ["linked.unenrolled", "ENROLL"],
-    ["vaultOnly.unenrolled", "ENROLL"],
-  ] as Array<[NoteLifecycleStatus, NoteLifecycleEvent]>)(
-    "given %p when resolved then returns %p",
-    (status, expected) => {
-      expect(importActFor(status)).toBe(expected);
-    },
-  );
-
-  test.each(["synced.vaultNewer", "synced.diverged"] as NoteLifecycleStatus[])(
-    "given %p without force when resolved then leaves the note alone",
-    (status) => {
-      expect(importActFor(status)).toBeUndefined();
-    },
-  );
-
-  test.each([
-    ["synced.vaultNewer", "FORCE_PULL"],
-    ["synced.diverged", "FORCE_PULL"],
-  ] as Array<[NoteLifecycleStatus, NoteLifecycleEvent]>)(
-    "given %p with force when resolved then returns %p",
-    (status, expected) => {
-      expect(importActFor(status, true)).toBe(expected);
-    },
-  );
-
-  test("given a note without a file with force when resolved then resurrects it", () => {
-    // given
-    const status: NoteLifecycleStatus = "ankiOnly.fileDeleted";
-
-    // when
-    const act = importActFor(status, true);
-
-    // then
-    expect(act).toBe("RESURRECT");
-  });
-
-  test.each([
-    ["ankiOnly.neverImported", "IMPORT"],
-    ["synced.clean", "CHECK"],
-    ["synced.ankiNewer", "PULL"],
-  ] as Array<[NoteLifecycleStatus, NoteLifecycleEvent]>)(
-    "given %p with force when resolved then the default act %p stands",
-    (status, expected) => {
-      expect(importActFor(status, true)).toBe(expected);
-    },
-  );
-
-  test.each([
-    "ankiOnly.fileDeleted",
-    "vaultOnly.unexported",
-    "vaultOnly.ankiDeleted",
-    "orphaned",
-  ] as NoteLifecycleStatus[])(
-    "given %p when resolved then leaves the note alone",
-    (status) => {
-      expect(importActFor(status)).toBeUndefined();
-    },
-  );
-});
-
-describe("syncActFor", () => {
-  test.each([
-    ["synced.clean", "CHECK"],
-    ["synced.ankiNewer", "PULL"],
-    ["synced.vaultNewer", "PUSH"],
-    ["synced.diverged", "RESOLVE_NEWEST"],
-  ] as Array<[NoteLifecycleStatus, NoteLifecycleEvent]>)(
-    "given %p when resolved then returns %p",
-    (status, expected) => {
-      expect(syncActFor(status)).toBe(expected);
-    },
-  );
-
-  test.each([
-    "ankiOnly.fileDeleted",
-    "ankiOnly.neverImported",
-    "linked.unenrolled",
-    "vaultOnly.unexported",
-    "vaultOnly.ankiDeleted",
-    "orphaned",
-  ] as NoteLifecycleStatus[])(
-    "given %p when resolved then leaves the note to the user or Sync",
-    (status) => {
-      expect(syncActFor(status)).toBeUndefined();
-    },
-  );
-});
-
 describe("FORCE_PULL transitions", () => {
   test.each(["synced.vaultNewer", "synced.diverged"] as NoteLifecycleStatus[])(
     "given %p when forced then lands clean",
@@ -331,57 +234,6 @@ describe("FORCE_PULL transitions", () => {
     "given %p when forced then throws",
     (status) => {
       expect(() => transitionNoteLifecycle(status, "FORCE_PULL")).toThrow();
-    },
-  );
-});
-
-describe("exportActFor", () => {
-  test.each([
-    ["vaultOnly.unexported", "EXPORT"],
-    ["linked.unenrolled", "ENROLL"],
-    ["vaultOnly.unenrolled", "ENROLL"],
-    ["synced.vaultNewer", "PUSH"],
-    ["synced.clean", "CHECK"],
-  ] as Array<[NoteLifecycleStatus, NoteLifecycleEvent]>)(
-    "given %p when resolved then returns %p",
-    (status, expected) => {
-      expect(exportActFor(status)).toBe(expected);
-    },
-  );
-
-  test.each([
-    "synced.ankiNewer",
-    "synced.diverged",
-    "vaultOnly.ankiDeleted",
-    "ankiOnly.neverImported",
-    "ankiOnly.fileDeleted",
-    "orphaned",
-  ] as NoteLifecycleStatus[])(
-    "given %p without Obsidian wins when resolved then leaves it to Sync",
-    (status) => {
-      expect(exportActFor(status)).toBeUndefined();
-    },
-  );
-
-  test.each([
-    ["synced.ankiNewer", "FORCE_PUSH"],
-    ["synced.diverged", "FORCE_PUSH"],
-    ["vaultOnly.ankiDeleted", "EXPORT"],
-  ] as Array<[NoteLifecycleStatus, NoteLifecycleEvent]>)(
-    "given %p with Obsidian wins when resolved then returns %p",
-    (status, expected) => {
-      expect(exportActFor(status, true)).toBe(expected);
-    },
-  );
-
-  test.each([
-    ["synced.vaultNewer", "PUSH"],
-    ["synced.clean", "CHECK"],
-    ["vaultOnly.unexported", "EXPORT"],
-  ] as Array<[NoteLifecycleStatus, NoteLifecycleEvent]>)(
-    "given %p with Obsidian wins when resolved then the default act %p stands",
-    (status, expected) => {
-      expect(exportActFor(status, true)).toBe(expected);
     },
   );
 });

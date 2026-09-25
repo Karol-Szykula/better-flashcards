@@ -101,15 +101,36 @@ Made quality non-negotiable: strict TypeScript, type-aware ESLint with sonarjs a
 Phase 1c - decision table, guards and honest reports (local only, no behavior regression):
 The lifecycle machine answers "is this transition legal" but never answered "what does this command do with this note in this run" - that lived in three resolvers, ~17 guards across three services, and four places where a note was neither written nor counted. This phase turns the answer into one table, proves the table is complete, and closes the silent outcomes, starting with the document and the proof so that every later production change is already visible in it.
 
-- [ ] UC-25h: the decision table as data, replacing the three resolver switches.
-  src/entities/sync-decision.ts owns one row per (command, status, isForced):
-  { act, owner, rationale }, where OUT_OF_SCOPE is explicit and named ("this is
-  Sync's business"), so an empty cell becomes impossible. The table is printed to
-  docs/sync-decision-table.md and pinned by the anti-drift test from
-  note-lifecycle.test.ts:213; the resolvers are repointed and then deleted at the
-  end of the UC, so the table is the only entry point. The rationale is the
-  user-facing sentence (the badge wiring is UC-25k). Done-when: doc in the repo,
-  anti-drift green, 442/442 with no assertion touched, no facade left
+- [x] UC-25h: the decision table as data, replacing the three resolver switches.
+  src/services/sync-decision.ts (services, not entities: the row type needs
+  NoteLifecycleStatus from note-lifecycle.ts, and moving that type out is its own
+  job) owns one row per (command, status): { act, forcedAct?, owner, rationale },
+  and OUT_OF_SCOPE is an explicit constant with a named owner, so an empty cell
+  is impossible - the resolvers returned `undefined` from a `default:` case,
+  which meant both "this command does not touch that" and "someone forgot a
+  case". Two accessors: syncDecisionFor returns the row (used by the doc and,
+  in UC-25k, by the preview badge) and decisionActFor applies the force rule in
+  one place, so the "forced only if the row has a forced act" precedence is not
+  duplicated at the call sites. The three resolvers are deleted, not wrapped:
+  import.ts, export.ts and sync.ts call decisionActFor and narrow with the
+  isInScope guard, and the forced counter in import.ts now reads "the force
+  overrode an out-of-scope default" off the row instead of re-calling the
+  resolver. The table prints to docs/sync-decision-table.md via
+  `pnpm run doc:sync-table` (src/dev/print-sync-decision-table.ts, added to
+  knip's entry because a dev script is an entry, not dead code) and the
+  anti-drift test pins the file. Behavior is unchanged: the 33 cases that used
+  to live in the three resolver describes moved verbatim into
+  tests/services/sync-decision.test.ts as three tables, and nothing else in the
+  suite moved - 432/432. Deviations worth naming: the rationale is per
+  (command, status) and not per forced variant, so UC-25k may need a per-forced
+  label for the states where the force is legal but changes nothing (today: an
+  up-to-date note rewrites identical content); the owner is the state owner, not
+  the acting command, which makes "out of scope => someone else owns it" a
+  property the data can be checked for; and Sync rows carry no forcedAct at
+  all, so the no-force-dimension rule is visible in the data instead of being
+  a convention. note-lifecycle.test.ts dropped 148 lines (519 -> 371) and is
+  still over the 300-line rule, which the remaining describes will fix when
+  UC-25i and UC-35 touch them
 - [ ] UC-25i: four property tests - totality (every command x status x force has
   a row), confinement at both levels (import never PUSHes, and a full
   executeImport issues no addNotes / updateNoteFields in the mock's request log),

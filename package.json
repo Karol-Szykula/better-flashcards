@@ -16,6 +16,7 @@
     "depcruise:graph": "depcruise src --config .dependency-cruiser.cjs --output-type mermaid --output-to docs/architecture.md",
     "depcruise:archi": "depcruise src --config .dependency-cruiser.cjs --output-type archi",
     "format": "prettier --write .",
+    "doc:sync-table": "esbuild src/dev/print-sync-decision-table.ts --bundle --platform=node --format=cjs --outfile=node_modules/.cache/sync-decision-table.cjs --log-level=error && node node_modules/.cache/sync-decision-table.cjs",
     "format:check": "prettier --check .",
     "lint:fix": "eslint . --fix",
     "check": "pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run knip && pnpm run test && pnpm run jscpd && pnpm run depcruise",

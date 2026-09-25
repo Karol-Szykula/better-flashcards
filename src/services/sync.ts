@@ -6,10 +6,10 @@ import type { DeckImportSnapshot, ISettings } from "src/conf/settings";
 import {
   classifyNoteLifecycle,
   syncedCleanRecord,
-  syncActFor,
   transitionNoteLifecycle,
   type NoteLifecycleEvent,
 } from "src/services/note-lifecycle";
+import { decisionActFor, isInScope } from "src/services/sync-decision";
 import {
   buildPushedNote,
   isAnkiNewer,
@@ -149,8 +149,8 @@ async function syncDeckNotes(
       counts.upToDate += 1;
       continue;
     }
-    const act = syncActFor(status);
-    if (act === undefined) {
+    const act = decisionActFor("sync", status);
+    if (!isInScope(act)) {
       throw new Error(`Sync cannot handle ${status}`);
     }
     transitionNoteLifecycle(status, act);
