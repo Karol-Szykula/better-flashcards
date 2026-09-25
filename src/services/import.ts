@@ -11,7 +11,11 @@ import {
   extractYamlNoteIds,
   findVaultNoteBlock,
 } from "src/services/vault";
-import { importDeckMedia, rewriteMediaReferences } from "src/services/media";
+import {
+  importDeckMedia,
+  mediaFilenamesIn,
+  rewriteMediaReferences,
+} from "src/services/media";
 import type { MediaPathMap } from "src/services/media";
 import { packForModel, type NotePack } from "src/services/note-packs";
 import {
@@ -123,27 +127,6 @@ export async function fetchDeckNotes(
 
 const markdownConverter = new showdown.Converter();
 
-function extractMediaFilenames(htmlFields: string[]): string[] {
-  const media: string[] = [];
-  const combined = htmlFields.join("\n");
-  const imagePattern = /<img[^>]*src="([^"]+)"[^>]*>/g;
-  const soundPattern = /\[sound:([^\]]+)\]/g;
-  let match: RegExpExecArray | null;
-  while ((match = imagePattern.exec(combined)) !== null) {
-    const image = match[1];
-    if (image !== undefined && !media.includes(image)) {
-      media.push(image);
-    }
-  }
-  while ((match = soundPattern.exec(combined)) !== null) {
-    const sound = match[1];
-    if (sound !== undefined && !media.includes(sound)) {
-      media.push(sound);
-    }
-  }
-  return media;
-}
-
 function listMarkerFor(indent: string): string {
   return indent.length <= 1 ? "- " : `${indent}- `;
 }
@@ -170,7 +153,7 @@ function mappedFieldValue(
 }
 
 function noteMediaFilenames(note: AnkiNoteInfo): string[] {
-  return extractMediaFilenames(
+  return mediaFilenamesIn(
     Object.values(note.fields).map((field) => field.value),
   );
 }
@@ -373,6 +356,7 @@ export interface ImportExecutionReport {
   created: number;
   forced: number;
   mediaFiles: number;
+  mediaNotImported: number;
   overwritten: number;
   skipped: number;
   skippedLeftToSync: number;
@@ -713,7 +697,7 @@ export async function executeImport(
   );
   const decision = await importDecision(packable, request, vault, yaml);
   const planned = plannedImports(decision.importable, request);
-  const importedPaths = await importDeckMedia(
+  const media = await importDeckMedia(
     anki,
     vault,
     request.deckName,
@@ -725,7 +709,8 @@ export async function executeImport(
     cancelled: false,
     created: 0,
     forced: decision.forced,
-    mediaFiles: Object.keys(importedPaths).length,
+    mediaFiles: Object.keys(media.written).length,
+    mediaNotImported: media.notImported.length,
     overwritten: 0,
     skipped: request.notes.length - selected.length,
     skippedLeftToSync: decision.skippedLeftToSync,
@@ -739,7 +724,7 @@ export async function executeImport(
     request,
     folder,
     planned,
-    importedPaths,
+    media.written,
     report,
     yaml,
   );

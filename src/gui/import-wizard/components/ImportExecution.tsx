@@ -95,6 +95,9 @@ export function ImportExecution({
           {report.skippedUnmapped > 0
             ? `, skipped without pack: ${report.skippedUnmapped}`
             : ""}
+          {report.mediaNotImported > 0
+            ? `, media not imported: ${report.mediaNotImported}`
+            : ""}
           {report.forced > 0 ? `, forced: ${report.forced}` : ""}
           {report.skippedNewerInVault > 0
             ? `, skipped (newer in Obsidian): ${report.skippedNewerInVault}`

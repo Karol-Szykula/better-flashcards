@@ -136,11 +136,25 @@ The lifecycle machine answers "is this transition legal" but never answered "wha
   unreachable pairs, so reachability reads the transition wrapper instead; and the
   import confinement is a request-log promise, not structural, because
   executeImport takes an Anki instance and may only read media with it.
-- [ ] UC-25j: three real bugs, each a named counter plus a literal-string test -
-  media dropped by `if (!data) continue` (media.ts:62-65), a fence parse failure
-  silent in export (export.ts:72-86), purgedRecords computed and never shown
-  (sync.ts:443-467). None needs the table, and the counters become the guard
-  reasons in UC-25m. Done-when: three counters, no terminal outcome silent
+- [x] UC-25j: three real bugs, each a named counter and a test on its literal text,
+  no change to what is written anywhere. Media (media.ts:62-65): a file Anki does
+  not have was dropped with no trace, and the extractor even asked for remote
+  images - mediaFilenamesIn now filters any reference with a scheme or a
+  protocol-relative src, importDeckMedia returns { notImported, written }, and the
+  report says "media not imported: N" (not "missing", because a name Anki stores
+  normalized would be counted as missing while the file exists; that case is
+  unverified and deliberately not fixed). Export (export.ts:82): a fence that
+  fails to parse vanished without a word - scanBlocks returns the unreadable
+  count and the report says "skipped unreadable: N". Sync (sync.ts:439): records
+  were forgotten without the count, and the case where a record is forgotten
+  while its block stays behind is now pinned by a test - purge never deletes a
+  block it cannot parse, and the report says "N deleted, M records forgotten".
+  Five existing assertions changed content because they described the bugs. Left
+  out on purpose: the "sum of outcomes = number of notes" property, because the
+  reports mix terminal outcomes with modifiers (forced, media) and that shape is
+  UC-28's to rewrite; and the normalized-name case of the media inventory, which
+  needs a real collection to confirm.
+
 - [ ] UC-25k: the badge is the rationale - all 11 literals leave NotesPreview.tsx
   (six states, three force variants, two accessible labels) and the 10 GUI
   assertions keep their text with a new source. Two new tests: the component

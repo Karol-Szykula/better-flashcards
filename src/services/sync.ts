@@ -463,6 +463,7 @@ export function formatSyncReport(report: SyncReport): string {
   return (
     `Sync: ${refreshed} refreshed, ${pushed} pushed, ` +
     `${upToDate} up to date, ${missing} missing, ${report.deleted} deleted, ` +
+    `${report.purgedRecords} records forgotten, ` +
     `${report.enrolled} enrolled, ${skippedUnmapped} skipped without pack\n` +
     lines.join("\n")
   );

@@ -275,15 +275,41 @@ describe("executeImport", () => {
     };
   }
 
-  function executeWith(files: Record<string, string>) {
+  function executeWith(
+    files: Record<string, string>,
+    mediaByFilename: Record<string, string> = {},
+  ) {
     const app = App.createConfigured__({ files });
     AnkiConnectMock.setResponder((request) => {
       if (request.action === "retrieveMediaFile") {
-        return { result: "ZGF0YQ==", error: null };
+        const params = request.params as Record<string, unknown>;
+        const filename = params["filename"] as string;
+        return { result: mediaByFilename[filename] ?? null, error: null };
       }
       return { result: null, error: null };
     });
     return { app, vault: app.vault as unknown as ObsidianVault };
+  }
+
+  async function importNoteWithFront(vault: ObsidianVault, front: string) {
+    return await executeImport(
+      new Anki(),
+      vault,
+      {
+        deckName: "Languages",
+        notes: [
+          {
+            ...basicImportNote(201, 100),
+            fields: { Front: { value: front }, Back: { value: "4" } },
+          },
+        ],
+        decisions: { 201: true },
+        fieldMappings: { Basic: basicMapping() },
+        targetFolder: "",
+        noteLifecycle: {},
+      },
+      jsonEngine,
+    );
   }
 
   test("given selected notes when executed then creates files with ids and reports", async () => {
@@ -322,6 +348,59 @@ describe("executeImport", () => {
     );
     expect(written).toContain("```note-form");
     expect(written).toContain('"id":101');
+  });
+
+  test("given a note with an image in Anki when executed then the file is written and the block points at it", async () => {
+    // given
+    const { vault } = executeWith({}, { "a.png": "ZGF0YQ==" });
+
+    // when
+    const report = await importNoteWithFront(
+      vault,
+      '<p>Heart <img src="a.png"></p>',
+    );
+
+    // then
+    expect(report.mediaFiles).toBe(1);
+    expect(report.mediaNotImported).toBe(0);
+    const written = await vault.read(
+      vault.getMarkdownFiles()[0] as unknown as ObsidianTFile,
+    );
+    expect(written).toContain("![[Languages/attachments/a.png]]");
+  });
+
+  test("given a note whose image is not in Anki when executed then the report names it", async () => {
+    // given
+    const { vault } = executeWith({});
+
+    // when
+    const report = await importNoteWithFront(
+      vault,
+      '<p>Heart <img src="gone.png"></p>',
+    );
+
+    // then
+    expect(report.mediaFiles).toBe(0);
+    expect(report.mediaNotImported).toBe(1);
+  });
+
+  test("given a note with a remote image when executed then no media is requested", async () => {
+    // given
+    const { vault } = executeWith({});
+
+    // when
+    const report = await importNoteWithFront(
+      vault,
+      '<p>Chart <img src="https://example.com/a.png"></p>',
+    );
+
+    // then
+    expect(report.mediaFiles).toBe(0);
+    expect(report.mediaNotImported).toBe(0);
+    const requested = AnkiConnectMock.requests.filter(
+      (request) => request.action === "retrieveMediaFile",
+    );
+    expect(requested).toHaveLength(0);
   });
 
   test("given a missing deck folder when executed then creates the folder first", async () => {
@@ -623,7 +702,7 @@ describe("executeImport", () => {
 
   test("given media references when executed then imports media and rewrites references", async () => {
     // given
-    const { vault } = executeWith({});
+    const { vault } = executeWith({}, { "a.png": "ZGF0YQ==" });
     const notes = [
       {
         noteId: 103,
@@ -819,7 +898,7 @@ describe("executeImport", () => {
 
   test("given a sound reference when executed then imports the sound file", async () => {
     // given
-    const { vault } = executeWith({});
+    const { vault } = executeWith({}, { "b.mp3": "ZGF0YQ==" });
     const notes = [
       {
         noteId: 108,

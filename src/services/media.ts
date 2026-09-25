@@ -5,6 +5,42 @@ import { ensureFolderExists } from "src/services/vault";
 
 export type MediaPathMap = Record<string, string>;
 
+export interface DeckMediaResult {
+  notImported: string[];
+  written: MediaPathMap;
+}
+
+const ankiMediaPattern = /<img[^>]*src="([^"]+)"[^>]*>/g;
+const ankiSoundPattern = /\[sound:([^\]]+)\]/g;
+const externalReferencePattern = /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i;
+
+function isAnkiMediaReference(reference: string): boolean {
+  return !externalReferencePattern.test(reference);
+}
+
+export function mediaFilenamesIn(htmlFields: string[]): string[] {
+  const media: string[] = [];
+  const combined = htmlFields.join("\n");
+  let match: RegExpExecArray | null;
+  while ((match = ankiMediaPattern.exec(combined)) !== null) {
+    const image = match[1];
+    if (
+      image !== undefined &&
+      isAnkiMediaReference(image) &&
+      !media.includes(image)
+    ) {
+      media.push(image);
+    }
+  }
+  while ((match = ankiSoundPattern.exec(combined)) !== null) {
+    const sound = match[1];
+    if (sound !== undefined && !media.includes(sound)) {
+      media.push(sound);
+    }
+  }
+  return media;
+}
+
 export function deckAttachmentsFolder(deckName: string): string {
   return `${deckName.split("::").join("/")}/attachments`;
 }
@@ -51,16 +87,18 @@ export async function importDeckMedia(
   vault: Vault,
   deckName: string,
   filenames: string[],
-): Promise<MediaPathMap> {
-  const importedPaths: MediaPathMap = {};
+): Promise<DeckMediaResult> {
+  const notImported: string[] = [];
+  const written: MediaPathMap = {};
   const takenPaths = new Set<string>();
   let folderReady = false;
   for (const filename of filenames) {
-    if (importedPaths[filename]) {
+    if (written[filename]) {
       continue;
     }
     const data = await anki.retrieveMediaFile(filename);
     if (!data) {
+      notImported.push(filename);
       continue;
     }
     if (!folderReady) {
@@ -72,9 +110,9 @@ export async function importDeckMedia(
       targetPath = resolveMediaPath(deckName, filename, takenPaths);
     }
     await vault.createBinary(targetPath, decodeBase64(data));
-    importedPaths[filename] = targetPath;
+    written[filename] = targetPath;
   }
-  return importedPaths;
+  return { notImported, written };
 }
 
 export function rewriteMediaReferences(

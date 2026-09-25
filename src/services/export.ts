@@ -45,8 +45,14 @@ export interface ExportReport {
   skippedForSync: number;
   skippedModelMismatch: number;
   skippedUnmapped: number;
+  skippedUnreadable: number;
   unchanged: number;
   updated: number;
+}
+
+interface BlockScan {
+  locations: BlockLocation[];
+  unreadable: number;
 }
 
 interface BlockLocation {
@@ -61,8 +67,9 @@ async function scanBlocks(
   vault: Vault,
   ignoredDirectories: string,
   yaml: YamlEngine,
-): Promise<BlockLocation[]> {
+): Promise<BlockScan> {
   const locations: BlockLocation[] = [];
+  let unreadable = 0;
   for (const file of vault.getMarkdownFiles()) {
     if (isIgnoredPath(file.path, ignoredDirectories)) {
       continue;
@@ -81,11 +88,12 @@ async function scanBlocks(
           start: match.index,
         });
       } catch {
+        unreadable += 1;
         continue;
       }
     }
   }
-  return locations;
+  return { locations, unreadable };
 }
 
 async function fetchNotesById(
@@ -155,6 +163,7 @@ function emptyExportReport(): ExportReport {
     skippedForSync: 0,
     skippedModelMismatch: 0,
     skippedUnmapped: 0,
+    skippedUnreadable: 0,
     unchanged: 0,
     updated: 0,
   };
@@ -301,7 +310,7 @@ async function planExport(
   anki: Anki,
   vault: Vault,
   settings: ISettings,
-  locations: BlockLocation[],
+  scan: BlockScan,
 ): Promise<ExportPlan> {
   const plan: ExportPlan = {
     creates: [],
@@ -311,15 +320,16 @@ async function planExport(
     synced: [],
   };
   const context: BlockPlanContext = {
-    ankiNotes: await fetchNotesById(anki, indexedBlockIds(locations)),
+    ankiNotes: await fetchNotesById(anki, indexedBlockIds(scan.locations)),
     packFor: packResolverFor(vault),
     settings,
     vault,
   };
-  for (const location of locations) {
+  for (const location of scan.locations) {
     await planBlock(context, location, plan);
   }
   plan.report.mediaFiles = mediaFileCount(plannedNotes(plan));
+  plan.report.skippedUnreadable = scan.unreadable;
   return plan;
 }
 
@@ -397,8 +407,8 @@ export async function executeExport(
   ignoredDirectories: string,
   yaml: YamlEngine = obsidianYamlEngine,
 ): Promise<ExportReport> {
-  const locations = await scanBlocks(vault, ignoredDirectories, yaml);
-  const plan = await planExport(anki, vault, settings, locations);
+  const scan = await scanBlocks(vault, ignoredDirectories, yaml);
+  const plan = await planExport(anki, vault, settings, scan);
   await assurePlannedModels(anki, plan);
   await uploadPlannedMedia(anki, plan);
   await createPlannedNotes(anki, plan);
@@ -416,6 +426,7 @@ export function formatExportReport(report: ExportReport): string {
     `${report.skippedDeleted} skipped as deleted, ` +
     `${report.skippedForSync} left to Sync, ` +
     `${report.skippedModelMismatch} skipped on model mismatch, ` +
-    `${report.skippedUnmapped} skipped without pack`
+    `${report.skippedUnmapped} skipped without pack, ` +
+    `${report.skippedUnreadable} skipped unreadable`
   );
 }

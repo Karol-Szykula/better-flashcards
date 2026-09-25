@@ -477,6 +477,40 @@ describe("executeSync", () => {
     expect(settings.noteLifecycle[102]?.lastMod).toBe(100);
   });
 
+  test("given an unreadable block when its note is gone then the record is forgotten and the block is kept", async () => {
+    // given
+    const brokenBlock = [
+      "```note-form",
+      "{",
+      '"front": "Q",',
+      '"back": "A"',
+      '"tags": "",',
+      '"id": 101',
+      "}",
+      "```",
+    ].join("\n");
+    const vault = vaultWith({ "Languages/Q-101.md": `${brokenBlock}\n` });
+    const before = await readPath(vault, "Languages/Q-101.md");
+    const settings = await snapshotSettings("Languages", {
+      101: { back: "A", front: "Q", mod: 100 },
+    });
+    respondWithDecks({ Languages: [] });
+
+    // when
+    const report: SyncReport = await executeSync(
+      new Anki(),
+      vault,
+      settings,
+      jsonEngine,
+    );
+
+    // then
+    expect(report.deleted).toBe(0);
+    expect(report.purgedRecords).toBe(1);
+    expect(settings.noteLifecycle[101]).toBeUndefined();
+    expect(await readPath(vault, "Languages/Q-101.md")).toBe(before);
+  });
+
   test("given a record in a deck outside the snapshots when executed then keeps it and its block", async () => {
     // given
     const before = `${formBlock("Q", "A", 101)}\n`;
@@ -716,7 +750,8 @@ describe("formatSyncReport", () => {
 
     // then
     expect(text).toContain(
-      "Sync: 3 refreshed, 2 pushed, 4 up to date, 1 missing, 5 deleted, 7 enrolled",
+      "Sync: 3 refreshed, 2 pushed, 4 up to date, 1 missing, 5 deleted, " +
+        "6 records forgotten, 7 enrolled, 0 skipped without pack",
     );
     expect(text).toContain("Languages");
   });

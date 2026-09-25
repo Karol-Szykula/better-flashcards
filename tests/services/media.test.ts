@@ -11,6 +11,7 @@ import {
   deckAttachmentsFolder,
   decodeBase64,
   importDeckMedia,
+  mediaFilenamesIn,
   resolveMediaPath,
   rewriteMediaReferences,
 } from "src/services/media";
@@ -113,6 +114,34 @@ describe("decodeBase64", () => {
   });
 });
 
+describe("mediaFilenamesIn", () => {
+  test.each([
+    ['<img src="a.png">', "a.png"],
+    ['<img alt="x" src="a.png" width="2">', "a.png"],
+    ["<p>[sound:a.mp3]</p>", "a.mp3"],
+  ])("given %p when scanned then it names %p", (html, expected) => {
+    expect(mediaFilenamesIn([html])).toEqual([expected]);
+  });
+
+  test.each([
+    ['<img src="https://example.com/a.png">'],
+    ['<img src="http://example.com/a.png">'],
+    ['<img src="//example.com/a.png">'],
+    ['<img src="data:image/png;base64,AAA">'],
+    ['<img src="file:///tmp/a.png">'],
+  ])("given %p when scanned then it is not Anki media", (html) => {
+    expect(mediaFilenamesIn([html])).toEqual([]);
+  });
+
+  test("given the same name twice when scanned then it is named once", () => {
+    // when
+    const names = mediaFilenamesIn(['<img src="a.png">', '<img src="a.png">']);
+
+    // then
+    expect(names).toEqual(["a.png"]);
+  });
+});
+
 describe("importDeckMedia", () => {
   test("given media in Anki when imported then retrieves them once and writes to attachments", async () => {
     // given
@@ -128,10 +157,11 @@ describe("importDeckMedia", () => {
     );
 
     // then
-    expect(imported).toEqual({
+    expect(imported.written).toEqual({
       "a.png": "Medicine/attachments/a.png",
       "b.png": "Medicine/attachments/b.png",
     });
+    expect(imported.notImported).toEqual([]);
     const retrieved = AnkiConnectMock.requests.filter(
       (r) => r.action === "retrieveMediaFile",
     );
@@ -142,7 +172,7 @@ describe("importDeckMedia", () => {
     expect(Array.from(new Uint8Array(stored))).toEqual(sampleBytes);
   });
 
-  test("given a missing file when imported then skips it without writing", async () => {
+  test("given a missing file when imported then names it as not imported and writes nothing", async () => {
     // given
     const app = App.createConfigured__({ files: {} });
     respondWithMedia({});
@@ -156,10 +186,29 @@ describe("importDeckMedia", () => {
     );
 
     // then
-    expect(imported).toEqual({});
+    expect(imported.written).toEqual({});
+    expect(imported.notImported).toEqual(["gone.png"]);
     expect(
       app.vault.getAbstractFileByPath("Medicine/attachments/gone.png"),
     ).toBeNull();
+  });
+
+  test("given one present and one missing file when imported then only the missing one is named", async () => {
+    // given
+    const app = App.createConfigured__({ files: {} });
+    respondWithMedia({ "a.png": sampleBase64 });
+
+    // when
+    const imported = await importDeckMedia(
+      new Anki(),
+      app.vault as unknown as ObsidianVault,
+      "Medicine",
+      ["a.png", "gone.png"],
+    );
+
+    // then
+    expect(Object.keys(imported.written)).toEqual(["a.png"]);
+    expect(imported.notImported).toEqual(["gone.png"]);
   });
 
   test("given no media when imported then leaves the vault untouched", async () => {
@@ -177,12 +226,12 @@ describe("importDeckMedia", () => {
     );
 
     // then
-    expect(imported).toEqual({});
+    expect(imported.written).toEqual({});
     expect(createFolder).not.toHaveBeenCalled();
     expect(app.vault.getAbstractFileByPath("Medicine")).toBeNull();
   });
 
-  test("given only missing files when imported then skips folder creation", async () => {
+  test("given only missing files when imported then skips folder creation and names them", async () => {
     // given
     const app = App.createConfigured__({ files: {} });
     const createFolder = jest.spyOn(app.vault, "createFolder");
@@ -197,7 +246,8 @@ describe("importDeckMedia", () => {
     );
 
     // then
-    expect(imported).toEqual({});
+    expect(imported.written).toEqual({});
+    expect(imported.notImported).toEqual(["gone.png"]);
     expect(createFolder).not.toHaveBeenCalled();
     expect(app.vault.getAbstractFileByPath("Medicine")).toBeNull();
   });
@@ -218,7 +268,10 @@ describe("importDeckMedia", () => {
     );
 
     // then
-    expect(imported).toEqual({ "a.png": "Medicine/attachments/a-1.png" });
+    expect(imported.written).toEqual({
+      "a.png": "Medicine/attachments/a-1.png",
+    });
+    expect(imported.notImported).toEqual([]);
     const untouched = storedFile(app, "Medicine/attachments/a.png");
     expect(await app.vault.read(untouched)).toBe("old");
   });

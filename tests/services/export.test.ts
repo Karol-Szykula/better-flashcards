@@ -579,6 +579,62 @@ describe("round trip without ping-pong", () => {
   });
 });
 
+describe("executeExport with an unreadable block", () => {
+  test("given a broken note-form fence when exported then the report counts it as unreadable", async () => {
+    // given
+    const brokenBlock = [
+      "```note-form",
+      "{",
+      '"front": "Broken",',
+      '"back": "A"',
+      '"tags": "",',
+      "}",
+      "```",
+    ].join("\n");
+    respondWithAnki();
+    const vault = vaultWith({
+      "Languages/Broken.md": `${brokenBlock}\n`,
+      "Languages/Fine.md": `${formBlock("What is 2+2?", "4", null)}\n`,
+    });
+
+    // when
+    const report = await executeExport(
+      new Anki(),
+      vault,
+      createSettings(),
+      "",
+      jsonEngine,
+    );
+
+    // then
+    expect(report.skippedUnreadable).toBe(1);
+    expect(report.created).toBe(1);
+  });
+
+  test("given a report with an unreadable block when formatted then it names the count", () => {
+    // given
+    const report: ExportReport = {
+      created: 1,
+      enrolled: 0,
+      mediaFiles: 0,
+      skippedConflicts: 0,
+      skippedDeleted: 0,
+      skippedForSync: 0,
+      skippedModelMismatch: 0,
+      skippedUnmapped: 0,
+      skippedUnreadable: 1,
+      unchanged: 0,
+      updated: 0,
+    };
+
+    // when
+    const text = formatExportReport(report);
+
+    // then
+    expect(text).toContain("1 skipped unreadable");
+  });
+});
+
 describe("formatExportReport", () => {
   test("given a report when formatted then summarizes the totals", () => {
     // given
@@ -591,6 +647,7 @@ describe("formatExportReport", () => {
       skippedForSync: 8,
       skippedModelMismatch: 9,
       skippedUnmapped: 5,
+      skippedUnreadable: 4,
       unchanged: 6,
       updated: 7,
     };
@@ -603,7 +660,8 @@ describe("formatExportReport", () => {
       "Export: 3 created, 7 updated, 1 enrolled, 6 unchanged, " +
         "2 media files, 3 skipped as conflicts, " +
         "4 skipped as deleted, 8 left to Sync, " +
-        "9 skipped on model mismatch, 5 skipped without pack",
+        "9 skipped on model mismatch, 5 skipped without pack, " +
+        "4 skipped unreadable",
     );
   });
 });
