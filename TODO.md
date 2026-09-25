@@ -99,121 +99,71 @@ Made quality non-negotiable: strict TypeScript, type-aware ESLint with sonarjs a
 - [ ] Ratchet targets for the complexity metrics, named offenders to tighten as each is refactored: syncDeckNotes (17 cyclomatic, 19 cognitive, 116 lines, 7 parameters), classifyNoteLifecycle (14 / 19), ImportWizard (221 lines), NotesPreview (242), FieldMapping (126), DeckSelection (119) - UC-28 rewrites syncDeckNotes, UC-35/36a the wizard components, UC-36 the export page, so the ceilings drop as a side effect of that work
 
 Phase 1c - decision table, guards and honest reports (local only, no behavior regression):
-
-The lifecycle machine answers "is this transition legal"; it never answered
-"what does this command do with this note in this run". That second question
-lived in three resolvers, ~17 runtime guards spread over three services, and
-four places where a note was neither written nor counted. This phase makes the
-answer a table, proves the table is complete, and closes the silent outcomes.
-The order matters: the document and the proof come first, so every later
-production change is already visible in the table.
+The lifecycle machine answers "is this transition legal" but never answered "what does this command do with this note in this run" - that lived in three resolvers, ~17 guards across three services, and four places where a note was neither written nor counted. This phase turns the answer into one table, proves the table is complete, and closes the silent outcomes, starting with the document and the proof so that every later production change is already visible in it.
 
 - [ ] UC-25h: the decision table as data, replacing the three resolver switches.
   src/entities/sync-decision.ts owns one row per (command, status, isForced):
-  { act: NoteLifecycleEvent | "OUT_OF_SCOPE", owner, rationale }. OUT_OF_SCOPE is
-  explicit and named ("this is Sync's business, not the wizard's"), so an empty
-  cell stops being possible and "this command does not touch that" stops
-  looking like a forgotten default case. syncDecisionTableMarkdown() prints it
-  to docs/sync-decision-table.md and the anti-drift test compares the file with
-  the generated text, the same pattern as the mermaid test at
-  tests/services/note-lifecycle.test.ts:213. The three resolvers are repointed
-  at the table in one mechanical step and then deleted at the end of this UC, so
-  the table is the only entry point and nothing can grow a second policy behind
-  a facade; the call sites (import.ts, export.ts, sync.ts) and the resolver
-  tests end up calling syncDecisionFor directly. The row's rationale is the
-  user-facing text: the same sentence is the justification in the generated doc
-  and the badge in the preview, so a label and a policy cannot drift apart (the
-  badge wiring itself is UC-25k). Done-when: doc in the repo, anti-drift green,
-  zero behavior change (442/442, no assertion touched), no facade left
-- [ ] UC-25i: four property tests that make the table trustworthy. (1) Totality:
-  every (command x status x isForced) has a row; a missing row fails, never an
-  accidental undefined. (2) Confinement at two levels: the resolver sets
-  (import never PUSHes, export never PULLs, sync invents nothing) AND the
-  AnkiConnect request log from the existing mock (a full executeImport issues no
-  addNotes and no updateNoteFields; the export id write-back is a declared
-  side effect). (3) Reachability with @xstate/graph: every (state, event) pair
-  is either emitted by some table row or explicitly marked unreachable - that
-  finds a state nothing leads to and an event nobody sends. (4) The three
-  ad-hoc resolver describes become one test.each over the table, rows named
-  "given <status> when <command> then <outcome>". Done-when: four tests, no
-  any, no it.skip, every status and event accounted for
-- [ ] UC-25j: three real bugs outside the policy table, counters and tests
-  first. Missing media is dropped by `if (!data) continue` (media.ts:62-65), so
-  the file is written with a dangling reference and the report says nothing; a
-  fence parse failure in export is silent (export.ts:72-86), so a note vanishes
-  from the export with no trace; and purgedRecords is computed and never shown
-  (sync.ts:443-467), which is exactly the "report explains every number"
-  criterion. None of the three needs the table - each needs a named counter and
-  a literal-string test, and when the guard table lands in UC-25m the counters
-  become those guards' reasons rather than throwaway work. Done-when: three
-  counters exist, each has a test on its literal text, and no terminal outcome
-  is silent
-- [ ] UC-25k: the badge is the rationale. The preview renders row.rationale from
-  the table instead of its own sentences, so all 11 literals leave
-  NotesPreview.tsx (six states, three force variants, two accessible labels - the
-  accessible labels are in scope because they are the same message for a screen
-  reader, today hand-duplicated). The 10 GUI assertions keep their text and
-  only change their source. Two new tests: the component contains no
-  user-facing sentence, and every row the preview can reach has a non-empty
-  rationale. Two things stay in the component on purpose: the aggregate
-  "nothing selected yet: 2 notes with newer Obsidian edits" reasons, because
-  they describe a whole selection rather than one row, and the file path in
-  "up to date - imported (<path>)", which needs a runtime value and stays a
-  composed exception until someone decides on a placeholder. Done-when: the
-  11 literals are gone, the 10 assertions pass unchanged, both new tests green
-- [ ] Next: UC-28. The first four items above are deliberately foundation and
-  bug fixing, and none of them changes behavior. The persona-visible win is
-  UC-28, rewritten on top of the finished table instead of on top of three
-  switches. The four items below are marked (after UC-28, because ...) and
-  must not be started earlier
-- [ ] UC-25l: honest reports on the Sync side (after UC-28, because UC-28
-  rewrites exactly this code and the counters are rewritten with it). The two
-  holes that survive from the original inventory: counts.refreshed is set to
-  eligible.length BEFORE the delegated import filters, so the report can claim
-  a refresh that never happened (sync.ts:216-221), and an untracked Anki note
-  with no linked block vanishes from Sync with no counter (sync.ts:121-126).
-  Done-when: refreshed is the number the import actually wrote, the untracked
-  note is counted with a named reason, and UC-28's aggregate report carries both
+  { act, owner, rationale }, where OUT_OF_SCOPE is explicit and named ("this is
+  Sync's business"), so an empty cell becomes impossible. The table is printed to
+  docs/sync-decision-table.md and pinned by the anti-drift test from
+  note-lifecycle.test.ts:213; the resolvers are repointed and then deleted at the
+  end of the UC, so the table is the only entry point. The rationale is the
+  user-facing sentence (the badge wiring is UC-25k). Done-when: doc in the repo,
+  anti-drift green, 442/442 with no assertion touched, no facade left
+- [ ] UC-25i: four property tests - totality (every command x status x force has
+  a row), confinement at both levels (import never PUSHes, and a full
+  executeImport issues no addNotes / updateNoteFields in the mock's request log),
+  reachability via @xstate/graph (every state x event pair is emitted or marked
+  unreachable), and the three resolver describes replaced by one test.each over
+  the table. Done-when: four tests, no any, no it.skip, every status accounted for
+- [ ] UC-25j: three real bugs, each a named counter plus a literal-string test -
+  media dropped by `if (!data) continue` (media.ts:62-65), a fence parse failure
+  silent in export (export.ts:72-86), purgedRecords computed and never shown
+  (sync.ts:443-467). None needs the table, and the counters become the guard
+  reasons in UC-25m. Done-when: three counters, no terminal outcome silent
+- [ ] UC-25k: the badge is the rationale - all 11 literals leave NotesPreview.tsx
+  (six states, three force variants, two accessible labels) and the 10 GUI
+  assertions keep their text with a new source. Two new tests: the component
+  holds no user-facing sentence, and every reachable row has a rationale. The
+  aggregate "nothing selected yet: 2 notes ..." reasons and the file path in
+  "up to date - imported (<path>)" stay in the component on purpose. Done-when:
+  the literals are gone, the assertions pass unchanged
+- [ ] Next: UC-28 - the first four items change no behavior; the persona-visible
+  win is the ledger-driven Sync, rewritten on the finished table. The four items
+  below are marked (after UC-28, because ...) and must not be started earlier
+- [ ] UC-25l: honest reports on the Sync side (after UC-28, because UC-28 rewrites
+  exactly this code) - counts.refreshed is set to eligible.length BEFORE the
+  delegated import filters, so the report can claim a refresh that never happened
+  (sync.ts:216-221), and an untracked Anki note with no linked block vanishes with
+  no counter (sync.ts:121-126). Done-when: refreshed is what the import wrote,
+  the untracked note has a named reason, UC-28's report carries both
 - [ ] UC-25m: guards as data (after UC-28, because the scope guard is the
-  snapshots question, which is UC-28's job). Guard = { id, appliesTo, blocks,
-  reason, mvp: "supported" | "reported" | "unsupported" } and the three command
-  paths ask the table instead of carrying if statements - today 17 guards, some
-  checked twice (the pack check runs in sync.ts:130-133 and again in
-  import.ts:450-474). The rule MODEL-12 promises in prose becomes code: mvp
-  "unsupported" means a mandatory counter, never a silent skip, visible both in
-  the table and in the report with a named reason. Done-when: all 17 guards
-  have a row, the duplicate pack check is gone, every row has a test
-- [ ] UC-25n: every action that changes a note's state, in the same document as
-  a second section (after UC-28 and UC-30/31, because DELETE_FILE and the
-  tombstone rows arrive with them). Inventory: import write, export create,
-  export push, the write-back of a new Anki id into the block, ENROLL (three
-  distinct paths), purge, DELETE_FILE, RESURRECT, fill-id-by-hash, baseline
-  write-back. For each: the states it can fire in, its producer, and the UC
-  that owns it. Three of them have no table cell today - DELETE_FILE has no
-  producer at all (Sync does not handle vaultOnly.ankiDeleted), purge and
-  fill-id-by-hash bypass the resolver entirely - and they become named Phase 2
-  entries instead of invisible code. Done-when: the section is complete against
-  the code, enforced by the same anti-drift test, and every gap has a Phase 2
-  reference
-- [ ] UC-25o: one classification snapshot for preview and execution (after
-  UC-25k, because the label the user read is then literally the policy that
-  runs, which is what makes this worth proving). The preview
-  (NotesPreview.tsx:273-293) and the execution (import.ts:477-501) classify the
-  same note separately, so a stale index can make a badge promise "overwrites
-  your file" while the run does something else. The index and the block hashes
-  are read once and carried into the execution request, and a test with a
-  deliberately stale index asserts badge and run agree. Done-when: that test is
-  green and cannot regress silently
+  snapshots question) - Guard = { id, appliesTo, blocks, reason, mvp } with the
+  three command paths asking the table instead of carrying if statements, 17
+  guards today with the pack check running twice (sync.ts:130-133 and
+  import.ts:450-474). MODEL-12's prose becomes code: mvp "unsupported" means a
+  mandatory counter, never a silent skip, in the table and in the report.
+  Done-when: all 17 have a row, the duplicate check is gone, each row has a test
+- [ ] UC-25n: every action that changes a note's state, as a second section of the
+  generated doc (after UC-28 and UC-30/31, because DELETE_FILE and the tombstone
+  rows arrive with them) - for each: the states it fires in, its producer, the UC
+  that owns it. Three have no cell today: DELETE_FILE has no producer at all,
+  purge and fill-id-by-hash bypass the resolver. Done-when: complete against the
+  code under the same anti-drift test, every gap a named Phase 2 entry
+- [ ] UC-25o: one classification snapshot for preview and execution (after UC-25k,
+  because the label the user read is then literally the policy that runs) - the
+  preview (NotesPreview.tsx:273-293) and the execution (import.ts:477-501)
+  classify separately, so a stale index can make a badge promise "overwrites your
+  file" while the run does something else. Done-when: index and block hashes are
+  read once and carried into the run, and a stale-index test asserts badge and
+  run agree
 
-Not in this phase: the scan/recreate command (deferred, as decided), any change
-to Sync's scope (that is UC-28, which runs in the middle of this phase, so the
-four items marked "after UC-28" close the phase rather than precede it),
-syncTieThresholdSec, a placeholder for runtime values in a rationale (the
-up-to-date badge keeps composing its file path in the component for now), and
-the legacy formats - the old flashcard-form fence, the Obsidian-* model names
-and the spaced/source markers are not detected and not reported; MODEL-10 says
-no migrations, and the plugin is not going to guess at content it no longer
-reads.
+Not in this phase: the scan/recreate command and syncTieThresholdSec (both
+deferred), a placeholder for runtime values in a rationale (the up-to-date badge
+keeps composing its own path), and the legacy formats - the old flashcard-form
+fence, the Obsidian-* model names and the spaced/source markers are not detected
+and not reported; MODEL-10 says no migrations, and the plugin does not guess at
+content it no longer reads.
 
 Bugs found after the current phase (not tied to a phase):
 - [ ] import wizard: it does not create subdecks, it should create nested subdecks as deep as Anki can hold them. What to look at: the import path never calls createDeck (only the export path does, from ensureDecks), the selected deck's `::` chain is only flattened into the vault folder path by deckFolder, and the per-deck search sends `deck:"Name"`, which in Anki does not match `Name::*` subdecks - so a parent deck that only holds subdecks can read as empty
