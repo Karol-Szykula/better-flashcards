@@ -51,6 +51,13 @@ function respondWithDeckNotes(
         error: null,
       };
     }
+    if (request.action === "cardsInfo") {
+      const params = request.params as { cards: number[] };
+      return {
+        result: params.cards.map((cardId) => ({ cardId, deckName: "" })),
+        error: null,
+      };
+    }
     return { result: null, error: null };
   });
 }

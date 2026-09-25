@@ -2,6 +2,7 @@ import { useEffect, useState, type JSX } from "react";
 import { mergeClasses } from "src/gui/classes";
 import { startAsyncLoad } from "src/gui/import-wizard/start-async-load";
 import type { Anki } from "src/services/anki";
+import { deckSearchQuery } from "src/services/deck-query";
 import type { VaultNoteIndex } from "src/services/vault";
 import type { NoteSyncState } from "src/services/import";
 import { fetchDeckNotes, isNoteUpdatedSince } from "src/services/import";
@@ -25,10 +26,6 @@ interface DeckWithNotes {
   readonly deckName: string;
   readonly noteIds: number[];
   readonly updatedCount: number | null;
-}
-
-function deckSearchQuery(deckName: string): string {
-  return `deck:"${deckName.replace(/"/g, "")}"`;
 }
 
 function countImportedNotes(

@@ -82,6 +82,7 @@ async function importDeck(
   settings: ISettings,
   decisions: Record<number, boolean>,
   ankiWinsNoteIds: number[] = [],
+  deckName = "Languages",
 ): Promise<void> {
   const vaultNoteIndex = await collectVaultNoteIndex(vault);
   await executeImport(
@@ -89,7 +90,7 @@ async function importDeck(
     vault,
     {
       ankiWinsNoteIds,
-      deckName: "Languages",
+      deckName,
       decisions,
       fieldMappings: { Basic: { Back: "Back", Front: "Front" } },
       noteLifecycle: settings.noteLifecycle,
@@ -146,6 +147,31 @@ describe("export then import round trip", () => {
     expect(
       ankiState.requests.filter((request) => request.action === "addNotes"),
     ).toHaveLength(createRequestsBeforeImport);
+  });
+
+  test("given a note exported from a nested folder when its deck is imported into an empty vault then the subdeck structure is preserved", async () => {
+    // given
+    responder.respondWith();
+    const vault = vaultWith({
+      "Languages/Russian/Privet.md": `${formBlock("Privet", "Hello", null)}\n`,
+    });
+    const settings = createSettings({});
+    const noteId = await exportOneNote(vault, settings);
+    const emptyVault = vaultWith({});
+
+    // when
+    await importDeck(
+      emptyVault,
+      settings,
+      { [noteId]: true },
+      [noteId],
+      "Languages::Russian",
+    );
+
+    // then
+    expect(emptyVault.getMarkdownFiles().map((file) => file.path)).toEqual([
+      `Languages/Russian/Privet-${noteId}.md`,
+    ]);
   });
 
   test("given a note exported to Anki when the export runs again then it is a no-op", async () => {

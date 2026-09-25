@@ -58,6 +58,7 @@ function fieldsOf(
 }
 
 export function ankiResponder(): AnkiResponder {
+  const deckByCardId = new Map<number, string>();
   const state: AnkiResponderState = {
     nextNoteId: defaultNextNoteId,
     notes: [],
@@ -98,7 +99,10 @@ export function ankiResponder(): AnkiResponder {
     payloads.map((payload) => {
       const noteId = state.nextNoteId;
       state.nextNoteId += 1;
+      const cardId = noteId * 10;
+      deckByCardId.set(cardId, payload.deckName);
       state.notes.push({
+        cards: [cardId],
         fields: fieldsOf(payload.fields),
         mod: state.writtenMod,
         modelName: payload.modelName,
@@ -165,6 +169,16 @@ export function ankiResponder(): AnkiResponder {
         const ids = (request.params as { notes: number[] }).notes;
         return {
           result: state.notes.filter((note) => ids.includes(note.noteId)),
+          error: null,
+        };
+      }
+      if (request.action === "cardsInfo") {
+        const ids = (request.params as { cards: number[] }).cards;
+        return {
+          result: ids.map((cardId) => ({
+            cardId,
+            deckName: deckByCardId.get(cardId) ?? "",
+          })),
           error: null,
         };
       }

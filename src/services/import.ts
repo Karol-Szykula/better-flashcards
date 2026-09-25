@@ -2,6 +2,7 @@ import * as showdown from "showdown";
 import { TFile } from "obsidian";
 import type { Vault } from "obsidian";
 import type { Anki } from "src/services/anki";
+import { deckSearchQuery } from "src/services/deck-query";
 import type { AnkiNoteInfo } from "src/entities/anki-note";
 import type { FieldMapping, FieldTarget } from "src/entities/field-mapping";
 import { ankiFieldNames } from "src/conf/constants";
@@ -124,6 +125,54 @@ async function fetchNotesInChunks(
   return notes;
 }
 
+async function withDeckNames(
+  anki: Anki,
+  working: WorkingNotes,
+): Promise<WorkingNotes> {
+  const deckByCardId = await cardDeckNames(anki, working.notes);
+  return {
+    ...working,
+    notes: working.notes.map((note) => {
+      const deckName = noteDeckName(note, deckByCardId);
+      return deckName === null ? note : { ...note, deckName };
+    }),
+  };
+}
+
+function noteDeckName(
+  note: AnkiNoteInfo,
+  deckByCardId: Map<number, string>,
+): string | null {
+  const deckNames = (note.cards ?? [])
+    .map((cardId) => deckByCardId.get(cardId))
+    .filter(
+      (deckName): deckName is string =>
+        deckName !== undefined && deckName !== "",
+    );
+  if (deckNames.length === 0) {
+    return null;
+  }
+  const sorted = [...deckNames].sort((first: string, second: string) =>
+    first.localeCompare(second),
+  );
+  return sorted[0] ?? null;
+}
+
+async function cardDeckNames(
+  anki: Anki,
+  notes: AnkiNoteInfo[],
+): Promise<Map<number, string>> {
+  const cardIds = notes.flatMap((note) => note.cards ?? []);
+  const deckByCardId = new Map<number, string>();
+  for (let i = 0; i < cardIds.length; i += notesChunkSize) {
+    const cards = await anki.cardsInfo(cardIds.slice(i, i + notesChunkSize));
+    for (const card of cards) {
+      deckByCardId.set(card.cardId, card.deckName);
+    }
+  }
+  return deckByCardId;
+}
+
 export async function fetchDeckNotes(
   anki: Anki,
   deckName: string,
@@ -177,11 +226,6 @@ export function isKnownModel(modelName: string): boolean {
   return knownModelBases.some(
     (base) => modelName === base || modelName.startsWith(base),
   );
-}
-
-function deckSearchQuery(deckName: string): string {
-  const safeDeckName = deckName.replace(/"/g, "");
-  return `deck:"${safeDeckName}"`;
 }
 
 async function fetchDiscoverySample(
@@ -372,6 +416,7 @@ export interface ImportExecutionReport {
   cancelled: boolean;
   changedSincePreview: number;
   created: number;
+  folders: number;
   forced: number;
   mediaFiles: number;
   mediaNotImported: number;
@@ -596,6 +641,25 @@ function plannedImports(
   }));
 }
 
+function folderFor(request: ExecuteImportRequest, item: PlannedImport): string {
+  return deckFolder(
+    item.note.deckName ?? request.deckName,
+    request.targetFolder,
+  );
+}
+
+function plannedByFolder(
+  request: ExecuteImportRequest,
+  planned: PlannedImport[],
+): Map<string, PlannedImport[]> {
+  const byFolder = new Map<string, PlannedImport[]>();
+  for (const item of planned) {
+    const folder = folderFor(request, item);
+    byFolder.set(folder, [...(byFolder.get(folder) ?? []), item]);
+  }
+  return byFolder;
+}
+
 function mediaNames(planned: PlannedImport[]): string[] {
   return [...new Set(planned.flatMap((item) => item.media))];
 }
@@ -671,16 +735,27 @@ async function serializedNote(
   };
 }
 
+interface ImportWriteContext {
+  importedPaths: Record<string, string>;
+  report: ImportExecutionReport;
+  request: ExecuteImportRequest;
+  takenPaths: Set<string>;
+  vault: Vault;
+  yaml: YamlEngine;
+}
+
+interface WriteProgress {
+  processed: number;
+  total: number;
+}
+
 async function writeImportedNote(
-  vault: Vault,
-  request: ExecuteImportRequest,
+  context: ImportWriteContext,
   folder: string,
   item: PlannedImport,
-  importedPaths: Record<string, string>,
-  takenPaths: Set<string>,
-  yaml: YamlEngine,
 ): Promise<{ hash: string; isNewFile: boolean }> {
-  const fields = rebuildYamlNoteFields(item, request, importedPaths);
+  const { request, vault, yaml } = context;
+  const fields = rebuildYamlNoteFields(item, request, context.importedPaths);
   const { content, hash } = await serializedNote(item, fields, yaml);
   const { existingFile, targetPath } = await freshFilePath(
     vault,
@@ -688,7 +763,7 @@ async function writeImportedNote(
     folder,
     item,
     fields.front,
-    takenPaths,
+    context.takenPaths,
   );
   if (existingFile !== null) {
     await vault.modify(existingFile, content);
@@ -699,39 +774,38 @@ async function writeImportedNote(
 }
 
 async function writeImportedNotes(
-  vault: Vault,
-  request: ExecuteImportRequest,
+  context: ImportWriteContext,
   folder: string,
   planned: PlannedImport[],
-  importedPaths: Record<string, string>,
-  report: ImportExecutionReport,
-  yaml: YamlEngine,
+  progress: WriteProgress,
 ): Promise<void> {
-  const takenPaths = new Set<string>();
-  let processed = 0;
   for (const item of planned) {
-    if (request.isCancelled?.()) {
-      report.cancelled = true;
+    if (context.request.isCancelled?.()) {
+      context.report.cancelled = true;
       return;
     }
-    const { hash, isNewFile } = await writeImportedNote(
-      vault,
-      request,
-      folder,
-      item,
-      importedPaths,
-      takenPaths,
-      yaml,
-    );
+    const { hash, isNewFile } = await writeImportedNote(context, folder, item);
     if (isNewFile) {
-      report.created += 1;
+      context.report.created += 1;
     } else {
-      report.overwritten += 1;
+      context.report.overwritten += 1;
     }
-    report.syncedNotes[item.note.noteId] = item.note.mod ?? 0;
-    report.syncedHashes[item.note.noteId] = hash;
-    processed += 1;
-    request.onProgress?.(processed, planned.length);
+    context.report.syncedNotes[item.note.noteId] = item.note.mod ?? 0;
+    context.report.syncedHashes[item.note.noteId] = hash;
+    progress.processed += 1;
+    context.request.onProgress?.(progress.processed, progress.total);
+  }
+}
+
+async function writePlannedFolders(
+  context: ImportWriteContext,
+  byFolder: Map<string, PlannedImport[]>,
+  total: number,
+): Promise<void> {
+  const progress: WriteProgress = { processed: 0, total };
+  for (const [folder, items] of byFolder) {
+    await ensureFolderExists(context.vault, folder);
+    await writeImportedNotes(context, folder, items, progress);
   }
 }
 
@@ -744,7 +818,7 @@ export async function executeImport(
   const selected = request.notes.filter(
     (note) => request.decisions[note.noteId] ?? false,
   );
-  const working = workingNotesFor(request, selected);
+  const working = await withDeckNames(anki, workingNotesFor(request, selected));
   const { packable, skippedUnmapped } = await packableNotes(
     working.notes,
     packResolver(vault),
@@ -757,12 +831,12 @@ export async function executeImport(
     request.deckName,
     mediaNames(planned),
   );
-  const folder = deckFolder(request.deckName, request.targetFolder);
-  await ensureFolderExists(vault, folder);
+  const byFolder = plannedByFolder(request, planned);
   const report: ImportExecutionReport = {
     cancelled: false,
     changedSincePreview: decision.changedSincePreview,
     created: 0,
+    folders: byFolder.size,
     forced: decision.forced,
     mediaFiles: Object.keys(media.written).length,
     mediaNotImported: media.notImported.length,
@@ -775,14 +849,17 @@ export async function executeImport(
     syncedNotes: {},
     vanishedFromDeck: working.vanished,
   };
-  await writeImportedNotes(
-    vault,
-    request,
-    folder,
-    planned,
-    media.written,
-    report,
-    yaml,
+  await writePlannedFolders(
+    {
+      importedPaths: media.written,
+      report,
+      request,
+      takenPaths: new Set(),
+      vault,
+      yaml,
+    },
+    byFolder,
+    planned.length,
   );
   return report;
 }

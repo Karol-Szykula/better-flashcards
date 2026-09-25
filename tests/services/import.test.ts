@@ -279,13 +279,28 @@ describe("executeImport", () => {
   function executeWith(
     files: Record<string, string>,
     mediaByFilename: Record<string, string> = {},
+    decksByCardId: Record<number, string> = {},
+    deckNames: string[] = [],
   ) {
     const app = App.createConfigured__({ files });
     AnkiConnectMock.setResponder((request) => {
+      if (request.action === "deckNames") {
+        return { result: deckNames, error: null };
+      }
       if (request.action === "retrieveMediaFile") {
         const params = request.params as Record<string, unknown>;
         const filename = params["filename"] as string;
         return { result: mediaByFilename[filename] ?? null, error: null };
+      }
+      if (request.action === "cardsInfo") {
+        const params = request.params as { cards: number[] };
+        return {
+          result: params.cards.map((cardId) => ({
+            cardId,
+            deckName: decksByCardId[cardId] ?? "",
+          })),
+          error: null,
+        };
       }
       return { result: null, error: null };
     });
@@ -312,6 +327,72 @@ describe("executeImport", () => {
       jsonEngine,
     );
   }
+
+  test("given a parent deck with notes in a subdeck when executed then the subdeck note lands in its own nested folder", async () => {
+    // given
+    const decksByCardId = { 9001: "Medicine", 9002: "Medicine::Anatomy" };
+    const { vault } = executeWith({}, {}, decksByCardId);
+    const notes = [
+      { ...basicImportNote(301, 100), cards: [9001] },
+      { ...basicImportNote(302, 100), cards: [9002] },
+    ];
+
+    // when
+    const report = await executeImport(
+      new Anki(),
+      vault,
+      {
+        deckName: "Medicine",
+        notes,
+        decisions: { 301: true, 302: true },
+        fieldMappings: { Basic: basicMapping() },
+        targetFolder: "",
+        noteLifecycle: {},
+      },
+      jsonEngine,
+    );
+
+    // then
+    const paths = vault
+      .getMarkdownFiles()
+      .map((file) => file.path)
+      .sort();
+    expect(paths).toEqual([
+      "Medicine/Anatomy/What-is-2-2-302.md",
+      "Medicine/What-is-2-2-301.md",
+    ]);
+    expect(report.folders).toBe(2);
+  });
+
+  test("given a deck with a subdeck branch that holds no notes when executed then no folder is created for that branch", async () => {
+    // given
+    const decksByCardId = { 9003: "Medicine::Anatomy" };
+    const deckNames = ["Medicine", "Medicine::Anatomy", "Medicine::Cardiology"];
+    const { vault } = executeWith({}, {}, decksByCardId, deckNames);
+    const notes = [{ ...basicImportNote(303, 100), cards: [9003] }];
+
+    // when
+    const report = await executeImport(
+      new Anki(),
+      vault,
+      {
+        deckName: "Medicine",
+        notes,
+        decisions: { 303: true },
+        fieldMappings: { Basic: basicMapping() },
+        targetFolder: "",
+        noteLifecycle: {},
+      },
+      jsonEngine,
+    );
+
+    // then
+    expect(vault.getMarkdownFiles().map((file) => file.path)).toEqual([
+      "Medicine/Anatomy/What-is-2-2-303.md",
+    ]);
+    expect(vault.getAbstractFileByPath("Medicine/Cardiology")).toBeNull();
+    expect(report.folders).toBe(1);
+  });
 
   test("given selected notes when executed then creates files with ids and reports", async () => {
     // given

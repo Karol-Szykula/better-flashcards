@@ -121,6 +121,7 @@ export function ImportExecution({
           {report.vanishedFromDeck > 0
             ? `, ${report.vanishedFromDeck} no longer in the deck`
             : ""}
+          {report.folders > 1 ? `, folders: ${report.folders}` : ""}
           {report.forced > 0 ? `, forced: ${report.forced}` : ""}
           {report.skippedNewerInVault > 0
             ? `, skipped (newer in Obsidian): ${report.skippedNewerInVault}`

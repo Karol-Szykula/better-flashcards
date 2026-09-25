@@ -11,6 +11,7 @@ export type AnkiNotePayload = {
 
 export type AnkiNoteInfo = {
   noteId: number;
+  deckName?: string;
   modelName?: string;
   mod?: number;
   fields: Record<string, { value: string }>;

@@ -46,7 +46,19 @@ export const supportedAnkiActions: ReadonlySet<string> = new Set([
 ]);
 
 const requests: AnkiConnectRequest[] = [];
-let responder: AnkiResponder = () => ({ result: null, error: null });
+
+/**
+ * What Anki answers for an action that returns a list: an empty list, never
+ * null. Only the actions that really have no result answer null here.
+ */
+function defaultResult(action: string): unknown {
+  return action === "cardsInfo" || action === "findNotes" ? [] : null;
+}
+
+let responder: AnkiResponder = (request) => ({
+  result: defaultResult(request.action),
+  error: null,
+});
 let connectionDown = false;
 
 class MockXMLHttpRequest {
@@ -99,7 +111,10 @@ export const AnkiConnectMock = {
   /** Clears recorded requests and restores the default responder. */
   reset(): void {
     requests.length = 0;
-    responder = () => ({ result: null, error: null });
+    responder = (request) => ({
+      result: defaultResult(request.action),
+      error: null,
+    });
     connectionDown = false;
   },
 

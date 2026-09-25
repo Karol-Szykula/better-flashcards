@@ -219,10 +219,14 @@ export class Anki {
     return await this.invoke<number[]>("findNotes", 6, { query });
   }
 
-  public async cardsInfo(ids: number[]): Promise<Array<{ deckName: string }>> {
-    return await this.invoke<Array<{ deckName: string }>>("cardsInfo", 6, {
-      cards: ids,
-    });
+  public async cardsInfo(
+    ids: number[],
+  ): Promise<Array<{ cardId: number; deckName: string }>> {
+    return await this.invoke<Array<{ cardId: number; deckName: string }>>(
+      "cardsInfo",
+      6,
+      { cards: ids },
+    );
   }
 
   public async getNotes(ids: number[]): Promise<AnkiNoteInfo[]> {

@@ -71,6 +71,10 @@ interface RecordedRequest {
 let recordedRequests: RecordedRequest[];
 
 function respondWithDecks(decks: Record<string, AnkiNoteInfo[]>): void {
+  const deckOfCard = (cardId: number): string | undefined =>
+    Object.entries(decks).find(([, notes]) =>
+      notes.some((note) => note.cards?.includes(cardId)),
+    )?.[0];
   recordedRequests = [];
   AnkiConnectMock.setResponder((request) => {
     recordedRequests.push({
@@ -93,6 +97,17 @@ function respondWithDecks(decks: Record<string, AnkiNoteInfo[]>): void {
       const all = Object.values(decks).flat();
       return {
         result: all.filter((note) => ids.includes(note.noteId)),
+        error: null,
+      };
+    }
+    if (request.action === "cardsInfo") {
+      const params = request.params as Record<string, unknown>;
+      const ids = params["cards"] as number[];
+      return {
+        result: ids.map((cardId) => ({
+          cardId,
+          deckName: deckOfCard(cardId) ?? "",
+        })),
         error: null,
       };
     }

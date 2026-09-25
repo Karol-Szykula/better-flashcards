@@ -33,6 +33,13 @@ function respondWithDeckNotes(deckCards: Record<string, number[]>) {
         );
         return { result: deckName ? deckCards[deckName] : [], error: null };
       }
+      case "cardsInfo": {
+        const params = request.params as { cards: number[] };
+        return {
+          result: params.cards.map((cardId) => ({ cardId, deckName: "" })),
+          error: null,
+        };
+      }
       default:
         return { result: null, error: null };
     }
@@ -48,6 +55,13 @@ function respondWithNotes(notes: Array<Record<string, unknown>>) {
         return { result: notes.map((note) => note["noteId"]), error: null };
       case "notesInfo":
         return { result: notes, error: null };
+      case "cardsInfo": {
+        const params = request.params as { cards: number[] };
+        return {
+          result: params.cards.map((cardId) => ({ cardId, deckName: "" })),
+          error: null,
+        };
+      }
       default:
         return { result: null, error: null };
     }
