@@ -313,21 +313,11 @@ export function notePreviewStatusFor(
 }
 
 /** The import wizard writes the file for these unless the user changes it. */
-export function isImportSelectedByDefault(status: NotePreviewStatus): boolean {
-  return status === "new" || status === "newerInAnki";
-}
-
 /**
  * True when "Anki wins" changes the outcome: the default would have skipped
  * the note or written something else. False when the default already takes
  * Anki's version, or when forcing would only rewrite identical content.
  */
-export function isForceDecisive(status: NotePreviewStatus): boolean {
-  return (
-    status === "noFile" || status === "newerInVault" || status === "diverged"
-  );
-}
-
 export function noteLifecycleMermaid(): string {
   const idOf = (status: string): string => status.replace(".", "_");
   const lines = ["stateDiagram-v2"];

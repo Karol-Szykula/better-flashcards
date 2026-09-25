@@ -86,6 +86,7 @@ export interface ClassifiedNote {
   isInVaultIndex: boolean;
   note: AnkiNoteInfo;
   previewStatus: NotePreviewStatus;
+  status: NoteLifecycleStatus;
   vaultPath?: string;
 }
 

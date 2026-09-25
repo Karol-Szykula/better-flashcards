@@ -155,16 +155,28 @@ The lifecycle machine answers "is this transition legal" but never answered "wha
   UC-28's to rewrite; and the normalized-name case of the media inventory, which
   needs a real collection to confirm.
 
-- [ ] UC-25k: the badge is the rationale - all 11 literals leave NotesPreview.tsx
-  (six states, three force variants, two accessible labels) and the 10 GUI
-  assertions keep their text with a new source. Two new tests: the component
-  holds no user-facing sentence, and every reachable row has a rationale. The
-  aggregate "nothing selected yet: 2 notes ..." reasons and the file path in
-  "up to date - imported (<path>)" stay in the component on purpose. Done-when:
-  the literals are gone, the assertions pass unchanged
-- [ ] Next: UC-28 - the first four items change no behavior; the persona-visible
-  win is the ledger-driven Sync, rewritten on the finished table. The four items
-  below are marked (after UC-28, because ...) and must not be started earlier
+- [x] UC-25k: the badge is the rationale. NotesPreview keeps the lifecycle status
+  (not just the six-value preview status) and reads the row, so the text is
+  policy again: the 11 literals are gone, the two noFile variants stay in the
+  component because they are guard reasons, and the up-to-date row still appends
+  its path because that value is not in the table. Three of the ten GUI
+  assertions changed their expected sentence, because the rationales were
+  rewritten to be short consequences ("Anki wins: overwrites your newer edits."),
+  which is the one visible change. Two hand-written policy lists died with it:
+  isImportSelectedByDefault is now the import write acts read off the table, and
+  isForceDecisive is row.forcedAct !== undefined; both were deleted from
+  note-lifecycle.ts with their twelve tests, replaced by four table contracts
+  (every forced act has a sentence, exactly one row carries a label without an
+  act, every kind is colourable) and one new GUI test that pins the case the old
+  badge got wrong: a block with an id and no ledger record says it enrols the
+  block instead of promising a new file. Colours come from row.kind, so an
+  overwrite is --text-error and a skip is --text-warning; the old single "updated"
+  colour and its token are gone. Icons are deliberately a coloured span with
+  aria-label and title, not setIcon: IconName is a plain string in these typings
+  so a wrong name would render nothing, and obsidian-test-mocks exports neither
+  setIcon nor setTooltip. Swapping in Lucide glyphs is one line once the mock
+  grows setIcon.
+
 - [ ] UC-25l: honest reports on the Sync side (after UC-28, because UC-28 rewrites
   exactly this code) - counts.refreshed is set to eligible.length BEFORE the
   delegated import filters, so the report can claim a refresh that never happened

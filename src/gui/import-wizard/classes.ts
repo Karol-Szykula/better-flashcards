@@ -41,9 +41,11 @@ export const notesPreviewClasses = {
   previewRowImported: "flashcards-import-wizard-modal__preview-row--imported",
   previewBadge: "flashcards-import-wizard-modal__preview-badge",
   previewBadgeNew: "flashcards-import-wizard-modal__preview-badge--new",
-  previewBadgeUpdated: "flashcards-import-wizard-modal__preview-badge--updated",
   previewBadgeImported:
     "flashcards-import-wizard-modal__preview-badge--imported",
+  previewBadgeOverwrite:
+    "flashcards-import-wizard-modal__preview-badge--overwrite",
+  previewBadgeSkipped: "flashcards-import-wizard-modal__preview-badge--skipped",
   previewPagination: "flashcards-import-wizard-modal__preview-pagination",
   noticeText: "flashcards-import-wizard-modal__preview-notice",
 } as const;

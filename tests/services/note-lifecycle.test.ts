@@ -5,8 +5,6 @@ import {
   NOTE_LIFECYCLE_EVENTS,
   NOTE_LIFECYCLE_STATUSES,
   classifyNoteLifecycle,
-  isForceDecisive,
-  isImportSelectedByDefault,
   noteLifecycleMachine,
   noteLifecycleMermaid,
   notePreviewStatusFor,
@@ -16,7 +14,6 @@ import {
   transitionNoteLifecycle,
   type NoteLifecycleEvent,
   type NoteLifecycleStatus,
-  type NotePreviewStatus,
 } from "src/services/note-lifecycle";
 import type { AnkiNoteInfo } from "src/entities/anki-note";
 import type { NoteLifecycleRecord } from "src/services/note-lifecycle";
@@ -284,40 +281,6 @@ describe("notePreviewStatusFor", () => {
     "given %p when viewed in the wizard then shows %p",
     (status, expected) => {
       expect(notePreviewStatusFor(status)).toBe(expected);
-    },
-  );
-});
-
-describe("isImportSelectedByDefault", () => {
-  test.each([
-    ["new", true],
-    ["newerInAnki", true],
-    ["newerInVault", false],
-    ["diverged", false],
-    ["noFile", false],
-    ["upToDate", false],
-  ] as Array<[string, boolean]>)(
-    "given %p when the preview opens then selected is %p",
-    (status, expected) => {
-      expect(isImportSelectedByDefault(status as NotePreviewStatus)).toBe(
-        expected,
-      );
-    },
-  );
-});
-
-describe("isForceDecisive", () => {
-  test.each([
-    ["noFile", true],
-    ["newerInVault", true],
-    ["diverged", true],
-    ["new", false],
-    ["newerInAnki", false],
-    ["upToDate", false],
-  ] as Array<[string, boolean]>)(
-    "given %p when the user forces it then the outcome changes is %p",
-    (status, expected) => {
-      expect(isForceDecisive(status as NotePreviewStatus)).toBe(expected);
     },
   );
 });

@@ -231,7 +231,27 @@ describe("NotesPreview", () => {
     await renderPreview();
 
     // when
-    const badge = await screen.findByText(/new.*creates a file/i);
+    const badge = await screen.findByText(/creates the file/i);
+
+    // then
+    expect(badge).toBeInTheDocument();
+  });
+
+  test("given a note whose block has an id but no ledger record when preview renders then it says it enrols the block", async () => {
+    // given
+    const blockWithId = "Enrolled card";
+    respondWithNotes([previewNote(107, 100, blockWithId)]);
+    await renderPreview({
+      files: {
+        "Enrolled-107.md": `${noteBlock(blockWithId, "B", 107)}\n`,
+      },
+      noteLifecycle: {},
+      notes: [previewNote(107, 100, blockWithId)],
+      vaultNoteIndex: new Map([[107, "Enrolled-107.md"]]),
+    });
+
+    // when
+    const badge = await screen.findByText(/enrols it, rewrites the same file/i);
 
     // then
     expect(badge).toBeInTheDocument();
@@ -257,7 +277,9 @@ describe("NotesPreview", () => {
     await renderPreview();
 
     // when
-    const badge = await screen.findByText(/up to date.*Up to date-101\.md/i);
+    const badge = await screen.findByText(
+      /rewrites nothing.*Up to date-101\.md/i,
+    );
 
     // then
     expect(badge).toBeInTheDocument();
@@ -347,7 +369,7 @@ describe("NotesPreview", () => {
     const toggle = within(previewRow("Missing file card")).getByRole(
       "checkbox",
       {
-        name: /re-create the file you deleted/i,
+        name: /re-creates the file you deleted/i,
       },
     );
 

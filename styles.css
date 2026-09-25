@@ -223,16 +223,20 @@
   opacity: 0.5;
 }
 
-.flashcards-import-wizard-modal__preview-badge--updated {
-  color: var(--text-warning);
-}
-
 .flashcards-import-wizard-modal__preview-badge--imported {
   color: var(--text-faint);
 }
 
 .flashcards-import-wizard-modal__preview-badge--new {
   color: var(--text-success);
+}
+
+.flashcards-import-wizard-modal__preview-badge--overwrite {
+  color: var(--text-error);
+}
+
+.flashcards-import-wizard-modal__preview-badge--skipped {
+  color: var(--text-warning);
 }
 
 .flashcards-import-wizard-modal__preview-pagination {

@@ -13,18 +13,22 @@ type SyncCommandOwner = SyncCommand | "purge" | "wizard";
 
 export type SyncDecisionAct = NoteLifecycleEvent | typeof OUT_OF_SCOPE;
 
+export type OutcomeKind =
+  "conflict" | "create" | "missing" | "quiet" | "skip" | "overwrite";
+
 export interface SyncDecisionRow {
   act: SyncDecisionAct;
   forcedAct?: SyncDecisionAct;
+  forcedOutcome?: string;
+  kind: OutcomeKind;
   owner: SyncCommandOwner;
   rationale: string;
 }
 
-const wizardEnrolment =
-  "The block carries an id that no record knows (fresh data.json or a hand-written id): enrol it against the Anki note, write nothing, then handle it as synced.*.";
+const enrolsSameFile =
+  "Has an id but no record: enrols it, rewrites the same file.";
 
-const staleRecord =
-  "Nothing in Anki, nothing in the vault, only a stale record: Purge ledger forgets it, no command acts on the note.";
+const staleRecord = "Only a stale record left: Purge ledger forgets it.";
 
 const decisions: Record<
   SyncCommand,
@@ -33,66 +37,74 @@ const decisions: Record<
   import: {
     "ankiOnly.neverImported": {
       act: "IMPORT",
+      kind: "create",
       owner: "import",
-      rationale:
-        "Only Anki has it and the vault never had it: write the file and enrol the note.",
+      rationale: "Anki only: creates the file.",
     },
     "ankiOnly.fileDeleted": {
       act: OUT_OF_SCOPE,
       forcedAct: "RESURRECT",
+      forcedOutcome: "Anki wins: re-creates the file you deleted.",
+      kind: "missing",
       owner: "sync",
-      rationale:
-        "The file is gone and Sync owns the rule (resurrect iff Anki is newer); the wizard never resurrects on its own, and only Anki wins re-creates the file.",
+      rationale: "File gone: Sync decides, Anki wins re-creates it.",
     },
     "synced.clean": {
       act: "CHECK",
+      forcedOutcome: "Anki wins: rewrites the same content.",
+      kind: "quiet",
       owner: "sync",
-      rationale:
-        "Both sides match the record: the wizard writes nothing and says which file already carries the note.",
+      rationale: "Both sides match: rewrites nothing.",
     },
     "synced.ankiNewer": {
       act: "PULL",
+      kind: "overwrite",
       owner: "sync",
-      rationale: "Anki is newer: refresh the vault file with Anki's version.",
+      rationale: "Newer in Anki: overwrites your file.",
     },
     "synced.vaultNewer": {
       act: OUT_OF_SCOPE,
       forcedAct: "FORCE_PULL",
+      forcedOutcome: "Anki wins: overwrites your newer edits.",
+      kind: "skip",
       owner: "sync",
-      rationale:
-        "Obsidian is newer: import never overwrites a newer edit - the user forces this one note or Sync decides.",
+      rationale: "Newer in Obsidian: skipped, use Sync.",
     },
     "synced.diverged": {
       act: OUT_OF_SCOPE,
       forcedAct: "FORCE_PULL",
+      forcedOutcome: "Anki wins: overwrites your newer edits.",
+      kind: "conflict",
       owner: "sync",
-      rationale:
-        "Edited in both places: import never resolves a conflict by clocks - the user forces it or Sync takes the newest.",
+      rationale: "Edited in both: newest wins on Sync.",
     },
     "linked.unenrolled": {
       act: "ENROLL",
+      kind: "quiet",
       owner: "wizard",
-      rationale: wizardEnrolment,
+      rationale: enrolsSameFile,
     },
     "vaultOnly.unexported": {
       act: OUT_OF_SCOPE,
+      kind: "create",
       owner: "export",
-      rationale:
-        "Only the vault has it and Anki has never seen it: the export wizard creates it.",
+      rationale: "Vault only: the export wizard creates it.",
     },
     "vaultOnly.unenrolled": {
       act: "ENROLL",
+      kind: "quiet",
       owner: "wizard",
-      rationale: wizardEnrolment,
+      rationale: enrolsSameFile,
     },
     "vaultOnly.ankiDeleted": {
       act: OUT_OF_SCOPE,
+      kind: "missing",
       owner: "sync",
-      rationale:
-        "The note is gone from Anki: Sync applies the deletion; Obsidian wins re-creates it in the export wizard.",
+      rationale: "Gone from Anki: Sync deletes the file.",
     },
     orphaned: {
       act: OUT_OF_SCOPE,
+      kind: "missing",
       owner: "purge",
       rationale: staleRecord,
     },
@@ -100,66 +112,73 @@ const decisions: Record<
   export: {
     "ankiOnly.neverImported": {
       act: OUT_OF_SCOPE,
+      kind: "create",
       owner: "import",
-      rationale:
-        "Only Anki has it: the import wizard brings it into the vault.",
+      rationale: "Anki only: the import wizard brings it in.",
     },
     "ankiOnly.fileDeleted": {
       act: OUT_OF_SCOPE,
+      kind: "missing",
       owner: "sync",
-      rationale:
-        "The vault file is gone: Sync owns the deletion rule and the export has nothing to push.",
+      rationale: "File gone: Sync decides, nothing to push.",
     },
     "synced.clean": {
       act: "CHECK",
+      kind: "quiet",
       owner: "sync",
-      rationale: "Both sides match the record: nothing is written to Anki.",
+      rationale: "Both sides match: nothing to write.",
     },
     "synced.ankiNewer": {
       act: OUT_OF_SCOPE,
       forcedAct: "FORCE_PUSH",
+      forcedOutcome: "Obsidian wins: overwrites Anki.",
+      kind: "skip",
       owner: "sync",
-      rationale:
-        "Anki is newer: export never overwrites it - the user forces it or Sync pulls.",
+      rationale: "Newer in Anki: skipped, use Sync.",
     },
     "synced.vaultNewer": {
       act: "PUSH",
+      kind: "overwrite",
       owner: "export",
-      rationale:
-        "Obsidian is newer: push the change to Anki and store the new baseline.",
+      rationale: "Newer in Obsidian: pushes to Anki.",
     },
     "synced.diverged": {
       act: OUT_OF_SCOPE,
       forcedAct: "FORCE_PUSH",
+      forcedOutcome: "Obsidian wins: overwrites Anki.",
+      kind: "conflict",
       owner: "sync",
-      rationale:
-        "Edited in both places: export does not guess - Obsidian wins forces it, Sync takes the newest.",
+      rationale: "Edited in both: skipped, use Sync.",
     },
     "linked.unenrolled": {
       act: "ENROLL",
+      kind: "quiet",
       owner: "wizard",
-      rationale: wizardEnrolment,
+      rationale: "Has an id but no record: enrols it, writes nothing.",
     },
     "vaultOnly.unexported": {
       act: "EXPORT",
+      kind: "create",
       owner: "export",
-      rationale:
-        "Only the vault has it: create the Anki note and write the new id back into the block.",
+      rationale: "Vault only: creates the Anki note, writes the id back.",
     },
     "vaultOnly.unenrolled": {
       act: "ENROLL",
+      kind: "quiet",
       owner: "wizard",
-      rationale: wizardEnrolment,
+      rationale: "Has an id but no record: enrols it, writes nothing.",
     },
     "vaultOnly.ankiDeleted": {
       act: OUT_OF_SCOPE,
       forcedAct: "EXPORT",
+      forcedOutcome: "Obsidian wins: re-creates it in Anki.",
+      kind: "missing",
       owner: "sync",
-      rationale:
-        "The note was deleted in Anki: Sync applies the deletion, Obsidian wins re-creates it on demand.",
+      rationale: "Gone from Anki: Sync applies the deletion.",
     },
     orphaned: {
       act: OUT_OF_SCOPE,
+      kind: "missing",
       owner: "purge",
       rationale: staleRecord,
     },
@@ -167,61 +186,69 @@ const decisions: Record<
   sync: {
     "ankiOnly.neverImported": {
       act: OUT_OF_SCOPE,
+      kind: "create",
       owner: "import",
-      rationale:
-        "An untracked Anki note is counted as needing import; Sync only touches tracked notes.",
+      rationale: "Untracked Anki note: counted as needing import.",
     },
     "ankiOnly.fileDeleted": {
       act: OUT_OF_SCOPE,
+      kind: "missing",
       owner: "sync",
       rationale:
-        "A tracked note with no file: the purge path handles it outside the resolver today, the tombstone rule arrives with UC-30.",
+        "No file: the purge path handles it outside this table, the tombstone rule arrives with UC-30.",
     },
     "synced.clean": {
       act: "CHECK",
+      kind: "quiet",
       owner: "sync",
-      rationale: "Both sides match the record: nothing to do.",
+      rationale: "Both sides match: nothing to do.",
     },
     "synced.ankiNewer": {
       act: "PULL",
+      kind: "overwrite",
       owner: "sync",
-      rationale: "Anki is newer: refresh the vault file.",
+      rationale: "Newer in Anki: refreshes the vault file.",
     },
     "synced.vaultNewer": {
       act: "PUSH",
+      kind: "overwrite",
       owner: "sync",
-      rationale: "Obsidian is newer: push to Anki.",
+      rationale: "Newer in Obsidian: pushes to Anki.",
     },
     "synced.diverged": {
       act: "RESOLVE_NEWEST",
+      kind: "conflict",
       owner: "sync",
-      rationale:
-        "Edited in both: the newer side wins (Anki mod against file mtime), ties are reported.",
+      rationale: "Edited in both: the newer side wins.",
     },
     "linked.unenrolled": {
       act: OUT_OF_SCOPE,
+      kind: "quiet",
       owner: "wizard",
-      rationale:
-        "Enrolling is the wizards' job; Sync counts these as needing import.",
+      rationale: "Enrolling is the wizards' job.",
     },
     "vaultOnly.unexported": {
       act: OUT_OF_SCOPE,
+      kind: "create",
       owner: "export",
-      rationale: "Only the vault has it: the export wizard creates it.",
+      rationale: "Vault only: the export wizard creates it.",
     },
     "vaultOnly.unenrolled": {
       act: OUT_OF_SCOPE,
+      kind: "quiet",
       owner: "wizard",
-      rationale: "A block with an id and no record: the wizards enrol it.",
+      rationale: "Enrolling is the wizards' job.",
     },
     "vaultOnly.ankiDeleted": {
       act: OUT_OF_SCOPE,
+      kind: "missing",
       owner: "sync",
       rationale:
-        "The note is gone from Anki: the deletion is applied by the purge path today, DELETE_FILE arrives with UC-31.",
+        "Gone from Anki: the purge path handles it, DELETE_FILE arrives with UC-31.",
     },
     orphaned: {
       act: OUT_OF_SCOPE,
+      kind: "missing",
       owner: "purge",
       rationale: staleRecord,
     },
@@ -257,18 +284,24 @@ const forceLabels: Record<SyncCommand, string> = {
   sync: "no force",
 };
 
+function whyOf(row: SyncDecisionRow): string {
+  return row.forcedOutcome === undefined
+    ? row.rationale
+    : `${row.rationale} Forced: ${row.forcedOutcome}`;
+}
+
 export function syncDecisionTableMarkdown(): string {
   const sections: string[] = [];
   for (const command of SYNC_COMMANDS) {
     const rows = Object.entries(decisions[command]).map(
       ([status, row]) =>
-        `| \`${status}\` | \`${row.act}\` | \`${row.forcedAct ?? "-"}\` | \`${row.owner}\` | ${row.rationale} |`,
+        `| \`${status}\` | \`${row.kind}\` | \`${row.act}\` | \`${row.forcedAct ?? "-"}\` | \`${row.owner}\` | ${whyOf(row)} |`,
     );
     sections.push(
       [
         `## ${command} (force: ${forceLabels[command]})`,
         "",
-        "| state | default | forced | owner | why |",
+        "| state | kind | default | forced | owner | why |",
         "| --- | --- | --- | --- | --- |",
         ...rows,
       ].join("\n"),

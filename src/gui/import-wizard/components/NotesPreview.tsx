@@ -8,10 +8,14 @@ import type { VaultNoteIndex } from "src/services/vault";
 import { findVaultNoteBlock } from "src/services/vault";
 import {
   classifyNoteLifecycle,
-  isForceDecisive,
-  isImportSelectedByDefault,
   notePreviewStatusFor,
 } from "src/services/note-lifecycle";
+import type {
+  NoteLifecycleEvent,
+  NoteLifecycleStatus,
+} from "src/services/note-lifecycle";
+import { decisionActFor, syncDecisionFor } from "src/services/sync-decision";
+import type { SyncDecisionRow } from "src/services/sync-decision";
 import type { NoteLifecycleRecord } from "src/services/note-lifecycle";
 import { computeContentHash } from "src/services/yaml-note";
 import { fetchDeckNotes, normalizeNoteText } from "src/services/import";
@@ -67,14 +71,68 @@ function previewRowRank(item: ClassifiedNote): number {
   return previewRowOrder.indexOf(item.previewStatus);
 }
 
-function previewBadgeClass(status: NotePreviewStatus): string {
-  if (status === "new") {
+function importRow(item: ClassifiedNote): SyncDecisionRow {
+  return syncDecisionFor("import", item.status);
+}
+
+const importWriteActs: readonly NoteLifecycleEvent[] = [
+  "ENROLL",
+  "FORCE_PULL",
+  "IMPORT",
+  "PULL",
+  "RESURRECT",
+];
+
+function isImportSelectedByDefault(status: NoteLifecycleStatus): boolean {
+  return importWriteActs.includes(
+    decisionActFor("import", status) as NoteLifecycleEvent,
+  );
+}
+
+function previewBadgeClass(item: ClassifiedNote): string {
+  const { kind } = importRow(item);
+  if (kind === "create") {
     return notesPreviewClasses.previewBadgeNew;
   }
-  if (status === "upToDate") {
+  if (kind === "quiet") {
     return notesPreviewClasses.previewBadgeImported;
   }
-  return notesPreviewClasses.previewBadgeUpdated;
+  if (kind === "skip" || kind === "conflict") {
+    return notesPreviewClasses.previewBadgeSkipped;
+  }
+  if (kind === "overwrite") {
+    return notesPreviewClasses.previewBadgeOverwrite;
+  }
+  return notesPreviewClasses.previewBadgeImported;
+}
+
+function previewBadgeOutcome(item: ClassifiedNote): string {
+  const row = importRow(item);
+  if (item.previewStatus === "noFile") {
+    return item.isInVaultIndex
+      ? "No file: no readable note-form block for this id, Sync decides."
+      : "No file: this id is nowhere in the vault, Sync decides.";
+  }
+  if (item.previewStatus === "upToDate") {
+    return `${row.rationale} (${item.vaultPath ?? "?"})`;
+  }
+  return row.rationale;
+}
+
+function previewBadgeText(item: ClassifiedNote, isForced: boolean): string {
+  const row = importRow(item);
+  if (isForced && row.forcedOutcome !== undefined) {
+    return row.forcedOutcome;
+  }
+  return previewBadgeOutcome(item);
+}
+
+function forceAriaLabel(item: ClassifiedNote): string {
+  const { forcedOutcome } = importRow(item);
+  return (
+    forcedOutcome ??
+    "Anki wins: overwrite what is in Obsidian with Anki's version"
+  );
 }
 
 function countNotes(count: number): string {
@@ -105,43 +163,6 @@ function resurrectionWarning(count: number): string {
   return `This re-creates ${countNotes(count)} you deleted in Obsidian.`;
 }
 
-function forceAriaLabel(status: NotePreviewStatus): string {
-  if (status === "noFile") {
-    return "Anki wins: re-create the file you deleted in Obsidian";
-  }
-  return "Anki wins: overwrite what is in Obsidian with Anki's version";
-}
-
-function previewBadgeText(item: ClassifiedNote, isForced: boolean): string {
-  if (isForced) {
-    if (item.previewStatus === "noFile") {
-      return " Anki wins — re-creates the file you deleted";
-    }
-    if (isForceDecisive(item.previewStatus)) {
-      return " Anki wins — overwrites your newer Obsidian edits";
-    }
-    if (item.previewStatus === "upToDate") {
-      return " Anki wins — rewrites the file with the same content";
-    }
-  }
-  switch (item.previewStatus) {
-    case "new":
-      return " new — creates a file";
-    case "newerInAnki":
-      return " newer in Anki — overwrites your file";
-    case "newerInVault":
-      return " newer in Obsidian — skipped, use Sync";
-    case "diverged":
-      return " edited in both — newest wins on Sync";
-    case "noFile":
-      return item.isInVaultIndex
-        ? " no file — no readable note-form block for this id, Sync decides"
-        : " no file — this id is nowhere in the vault, Sync decides";
-    case "upToDate":
-      return ` up to date — imported (${item.vaultPath ?? "?"})`;
-  }
-}
-
 interface NoteRowProps {
   readonly className?: string;
   readonly forcedNoteIds: Record<number, boolean>;
@@ -170,7 +191,7 @@ function NoteRow({
         <span key="select">
           <input
             checked={notesSelectedToImport[noteId] ?? false}
-            disabled={!isImportSelectedByDefault(item.previewStatus)}
+            disabled={!isImportSelectedByDefault(item.status)}
             key="select"
             onChange={(event) =>
               onSelectedChange(
@@ -183,7 +204,7 @@ function NoteRow({
           />
           <label>
             <input
-              aria-label={forceAriaLabel(item.previewStatus)}
+              aria-label={forceAriaLabel(item)}
               checked={forcedNoteIds[noteId] ?? false}
               key="force"
               onChange={(event) => onForcedChange(noteId, event.target.checked)}
@@ -197,7 +218,7 @@ function NoteRow({
           <span
             className={mergeClasses(
               notesPreviewClasses.previewBadge,
-              previewBadgeClass(item.previewStatus),
+              previewBadgeClass(item),
             )}
           >
             {previewBadgeText(item, forcedNoteIds[noteId] ?? false)}
@@ -295,6 +316,7 @@ export function NotesPreview({
           isInVaultIndex,
           note,
           previewStatus: notePreviewStatusFor(status),
+          status,
           vaultPath: vaultNoteIndex.get(note.noteId),
         });
       }
@@ -324,9 +346,7 @@ export function NotesPreview({
       const merged = { ...notesSelectedToImport };
       for (const item of classified) {
         if (!(item.note.noteId in merged)) {
-          merged[item.note.noteId] = isImportSelectedByDefault(
-            item.previewStatus,
-          );
+          merged[item.note.noteId] = isImportSelectedByDefault(item.status);
         }
       }
       onNotesSelectedToImportChange(merged);
@@ -372,7 +392,7 @@ export function NotesPreview({
   );
   const notesLeftToDecide = classified.filter(
     (item) =>
-      !isImportSelectedByDefault(item.previewStatus) &&
+      !isImportSelectedByDefault(item.status) &&
       !forcedNoteIds[item.note.noteId],
   );
   const notesToResurrect = notesLeftToDecide.filter(

@@ -12,6 +12,7 @@ import {
   SYNC_COMMANDS,
   syncDecisionFor,
   syncDecisionTableMarkdown,
+  type OutcomeKind,
   type SyncCommand,
   type SyncDecisionAct,
 } from "src/services/sync-decision";
@@ -84,6 +85,15 @@ describe("decisionActFor", () => {
     },
   );
 });
+
+const kinds: readonly OutcomeKind[] = [
+  "conflict",
+  "create",
+  "missing",
+  "overwrite",
+  "quiet",
+  "skip",
+];
 
 const confinement: Record<SyncCommand, readonly SyncDecisionAct[]> = {
   export: ["EXPORT", "PUSH", "FORCE_PUSH", "ENROLL", "CHECK", OUT_OF_SCOPE],
@@ -210,6 +220,46 @@ describe("command confinement", () => {
         decisionActFor("export", status, true),
       ]) {
         expect(pulling).not.toContain(act);
+      }
+    }
+  });
+});
+
+describe("the forced outcomes", () => {
+  test("given a row with a forced act when read then it carries the sentence the user reads", () => {
+    for (const command of SYNC_COMMANDS) {
+      for (const status of NOTE_LIFECYCLE_STATUSES) {
+        const row = syncDecisionFor(command, status);
+        if (row.forcedAct !== undefined) {
+          expect(row.forcedOutcome).toBeDefined();
+        }
+      }
+    }
+  });
+
+  test("given the one state where the force only changes the label when read then it carries a sentence", () => {
+    // given
+    const row = syncDecisionFor("import", "synced.clean");
+
+    // then
+    expect(row.forcedAct).toBeUndefined();
+    expect(row.forcedOutcome).toBeDefined();
+  });
+
+  test("given a row without a forced act when read then it claims no forced sentence", () => {
+    const forcedSentences = SYNC_COMMANDS.flatMap((command) =>
+      NOTE_LIFECYCLE_STATUSES.map((status) => syncDecisionFor(command, status)),
+    ).filter((row) => row.forcedOutcome !== undefined);
+    const inertLabels = forcedSentences.filter(
+      (row) => row.forcedAct === undefined,
+    );
+    expect(inertLabels).toHaveLength(1);
+  });
+
+  test("given every row when read then the kind is one the preview knows how to colour", () => {
+    for (const command of SYNC_COMMANDS) {
+      for (const status of NOTE_LIFECYCLE_STATUSES) {
+        expect(kinds).toContain(syncDecisionFor(command, status).kind);
       }
     }
   });
