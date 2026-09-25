@@ -16,7 +16,7 @@ import {
 } from "src/services/note-packs";
 import { noteShapeFor } from "src/entities/note-shapes";
 import { mergeFieldMappings } from "src/entities/field-mapping";
-import type { AnkiNoteInfo } from "src/entities/anki-note";
+import { useDeckPreview } from "src/gui/import-wizard/use-deck-preview";
 import { PageIndicator } from "src/gui/import-wizard/components/PageIndicator";
 import { DeckSelection } from "src/gui/import-wizard/components/DeckSelection";
 import { FieldMapping } from "src/gui/import-wizard/components/FieldMapping";
@@ -60,6 +60,7 @@ export function ImportWizard({
   const [anki] = useState(() => new Anki());
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedDeckName, setSelectedDeckName] = useState("");
+  const { deckNotes, handleNotesLoaded, previewStatuses } = useDeckPreview();
   const [vaultNoteIndex, setVaultNoteIndex] = useState<VaultNoteIndex>(
     new Map(),
   );
@@ -72,7 +73,6 @@ export function ImportWizard({
   const [forcedNoteIds, setForcedNoteIds] = useState<Record<number, boolean>>(
     {},
   );
-  const [deckNotes, setDeckNotes] = useState<AnkiNoteInfo[]>([]);
   const [notesPreviewPage, setNotesPreviewPage] = useState(0);
   const [notesPreviewTotalPages, setNotesPreviewTotalPages] = useState(1);
 
@@ -244,7 +244,7 @@ export function ImportWizard({
           noteLifecycle={settings.noteLifecycle}
           notesSelectedToImport={notesSelectedToImport}
           onForcedNoteIdsChange={setForcedNoteIds}
-          onNotesLoaded={setDeckNotes}
+          onNotesLoaded={handleNotesLoaded}
           onNotesSelectedToImportChange={setNotesSelectedToImport}
           onPageChange={handleNotesPreviewPageChange}
           onTotalPagesChange={handleNotesPreviewTotalPagesChange}
@@ -265,6 +265,7 @@ export function ImportWizard({
           notes={deckNotes}
           notesSelectedToImport={notesSelectedToImport}
           onFinish={finishImport}
+          previewStatuses={previewStatuses}
           vault={vault}
           vaultNoteIndex={vaultNoteIndex}
         />

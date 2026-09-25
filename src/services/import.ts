@@ -110,13 +110,11 @@ export function normalizeNoteText(input: string): string {
   return stripMarkdown(stripHtml(input)).replace(/\s+/g, " ").trim();
 }
 
-export async function fetchDeckNotes(
+async function fetchNotesInChunks(
   anki: Anki,
-  deckName: string,
+  noteIds: number[],
   onChunk?: (fetched: number, total: number) => void,
 ): Promise<AnkiNoteInfo[]> {
-  const safeDeckName = deckName.replace(/"/g, "");
-  const noteIds = await anki.findNotes(`deck:"${safeDeckName}"`);
   const notes: AnkiNoteInfo[] = [];
   for (let i = 0; i < noteIds.length; i += notesChunkSize) {
     const chunk = await anki.getNotes(noteIds.slice(i, i + notesChunkSize));
@@ -124,6 +122,22 @@ export async function fetchDeckNotes(
     onChunk?.(notes.length, noteIds.length);
   }
   return notes;
+}
+
+export async function fetchDeckNotes(
+  anki: Anki,
+  deckName: string,
+  onChunk?: (fetched: number, total: number) => void,
+): Promise<AnkiNoteInfo[]> {
+  const noteIds = await anki.findNotes(deckSearchQuery(deckName));
+  return await fetchNotesInChunks(anki, noteIds, onChunk);
+}
+
+export async function fetchNotesByIds(
+  anki: Anki,
+  noteIds: number[],
+): Promise<AnkiNoteInfo[]> {
+  return await fetchNotesInChunks(anki, noteIds);
 }
 
 const markdownConverter = new showdown.Converter();
@@ -344,16 +358,19 @@ export interface ExecuteImportRequest {
   decisions: Record<number, boolean>;
   deckName: string;
   fieldMappings: Record<string, FieldMapping>;
+  freshNotes?: AnkiNoteInfo[];
   isCancelled?: () => boolean;
   noteLifecycle: Record<number, NoteLifecycleRecord>;
   notes: AnkiNoteInfo[];
   onProgress?: (processed: number, total: number) => void;
+  previewStatuses?: Record<number, NoteLifecycleStatus>;
   targetFolder: string;
   vaultNoteIndex?: VaultNoteIndex;
 }
 
 export interface ImportExecutionReport {
   cancelled: boolean;
+  changedSincePreview: number;
   created: number;
   forced: number;
   mediaFiles: number;
@@ -365,6 +382,7 @@ export interface ImportExecutionReport {
   skippedUnmapped: number;
   syncedHashes: Record<number, string>;
   syncedNotes: Record<number, number>;
+  vanishedFromDeck: number;
 }
 
 interface YamlNoteFields {
@@ -423,10 +441,39 @@ interface PlannedImport {
 }
 
 interface ImportDecision {
+  changedSincePreview: number;
   forced: number;
   importable: AnkiNoteInfo[];
   skippedLeftToSync: number;
   skippedNewerInVault: number;
+}
+
+interface WorkingNotes {
+  notes: AnkiNoteInfo[];
+  vanished: number;
+}
+
+function workingNotesFor(
+  request: ExecuteImportRequest,
+  selected: AnkiNoteInfo[],
+): WorkingNotes {
+  if (request.freshNotes === undefined) {
+    return { notes: selected, vanished: 0 };
+  }
+  const freshById = new Map(
+    request.freshNotes.map((note) => [note.noteId, note]),
+  );
+  const notes: AnkiNoteInfo[] = [];
+  let vanished = 0;
+  for (const note of selected) {
+    const fresh = freshById.get(note.noteId);
+    if (fresh === undefined) {
+      vanished += 1;
+    } else {
+      notes.push(fresh);
+    }
+  }
+  return { notes, vanished };
 }
 
 interface NoteTarget {
@@ -511,6 +558,7 @@ async function importDecision(
 ): Promise<ImportDecision> {
   const ankiWinsNoteIds = new Set(request.ankiWinsNoteIds ?? []);
   const decision: ImportDecision = {
+    changedSincePreview: 0,
     forced: 0,
     importable: [],
     skippedLeftToSync: 0,
@@ -518,6 +566,10 @@ async function importDecision(
   };
   for (const note of packable) {
     const status = await statusForImport(vault, request, note, yaml);
+    const previewStatus = request.previewStatuses?.[note.noteId];
+    if (previewStatus !== undefined && previewStatus !== status) {
+      decision.changedSincePreview += 1;
+    }
     const isForced = ankiWinsNoteIds.has(note.noteId);
     const act = decisionActFor("import", status, isForced);
     if (!isInScope(act)) {
@@ -692,8 +744,9 @@ export async function executeImport(
   const selected = request.notes.filter(
     (note) => request.decisions[note.noteId] ?? false,
   );
+  const working = workingNotesFor(request, selected);
   const { packable, skippedUnmapped } = await packableNotes(
-    selected,
+    working.notes,
     packResolver(vault),
   );
   const decision = await importDecision(packable, request, vault, yaml);
@@ -708,6 +761,7 @@ export async function executeImport(
   await ensureFolderExists(vault, folder);
   const report: ImportExecutionReport = {
     cancelled: false,
+    changedSincePreview: decision.changedSincePreview,
     created: 0,
     forced: decision.forced,
     mediaFiles: Object.keys(media.written).length,
@@ -719,6 +773,7 @@ export async function executeImport(
     skippedUnmapped,
     syncedHashes: {},
     syncedNotes: {},
+    vanishedFromDeck: working.vanished,
   };
   await writeImportedNotes(
     vault,

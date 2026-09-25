@@ -3,10 +3,17 @@ import { mergeClasses } from "src/gui/classes";
 import type { Vault } from "obsidian";
 import type { Anki } from "src/services/anki";
 import type { AnkiNoteInfo } from "src/entities/anki-note";
-import type { NoteLifecycleRecord } from "src/services/note-lifecycle";
+import type {
+  NoteLifecycleRecord,
+  NoteLifecycleStatus,
+} from "src/services/note-lifecycle";
 import type { FieldMapping as FieldMap } from "src/entities/field-mapping";
 import type { VaultNoteIndex } from "src/services/vault";
-import { executeImport, type ImportExecutionReport } from "src/services/import";
+import {
+  executeImport,
+  fetchNotesByIds,
+  type ImportExecutionReport,
+} from "src/services/import";
 import { commonWizardClasses } from "src/gui/import-wizard/classes";
 
 export interface ImportExecutionProps {
@@ -19,6 +26,7 @@ export interface ImportExecutionProps {
   readonly notes: AnkiNoteInfo[];
   readonly notesSelectedToImport: Record<number, boolean>;
   readonly onFinish: (report: ImportExecutionReport) => void;
+  readonly previewStatuses?: Record<number, NoteLifecycleStatus>;
   readonly vault: Vault;
   readonly vaultNoteIndex?: VaultNoteIndex;
 }
@@ -35,6 +43,7 @@ export function ImportExecution({
   noteLifecycle,
   notes,
   onFinish,
+  previewStatuses,
   vault,
   vaultNoteIndex,
 }: ImportExecutionProps): JSX.Element {
@@ -48,7 +57,15 @@ export function ImportExecution({
     setPhase("running");
     setFailure("");
     try {
+      const freshNotes = await fetchNotesByIds(
+        anki,
+        notes
+          .filter((note) => notesSelectedToImport[note.noteId] ?? false)
+          .map((note) => note.noteId),
+      );
       const finished = await executeImport(anki, vault, {
+        freshNotes,
+        previewStatuses,
         ankiWinsNoteIds: Object.entries(forcedNoteIds)
           .filter(([, isForced]) => isForced)
           .map(([noteId]) => Number(noteId)),
@@ -97,6 +114,12 @@ export function ImportExecution({
             : ""}
           {report.mediaNotImported > 0
             ? `, media not imported: ${report.mediaNotImported}`
+            : ""}
+          {report.changedSincePreview > 0
+            ? `, ${report.changedSincePreview} changed since the preview`
+            : ""}
+          {report.vanishedFromDeck > 0
+            ? `, ${report.vanishedFromDeck} no longer in the deck`
             : ""}
           {report.forced > 0 ? `, forced: ${report.forced}` : ""}
           {report.skippedNewerInVault > 0

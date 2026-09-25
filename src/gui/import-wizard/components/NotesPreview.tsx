@@ -39,7 +39,10 @@ export interface NotesPreviewProps {
   readonly onForcedNoteIdsChange: (
     forcedNoteIds: Record<number, boolean>,
   ) => void;
-  readonly onNotesLoaded: (notes: AnkiNoteInfo[]) => void;
+  readonly onNotesLoaded: (
+    notes: AnkiNoteInfo[],
+    statuses: Record<number, NoteLifecycleStatus>,
+  ) => void;
   readonly onNotesSelectedToImportChange: (
     notesSelectedToImport: Record<number, boolean>,
   ) => void;
@@ -273,7 +276,6 @@ export function NotesPreview({
         });
         if (isLive()) {
           setRawNotes(notes);
-          onNotesLoaded(notes);
         }
       } catch {
         if (isLive()) {
@@ -325,6 +327,12 @@ export function NotesPreview({
           (first, second) => previewRowRank(first) - previewRowRank(second),
         );
         setClassified(ordered);
+        onNotesLoaded(
+          items.map((item) => item.note),
+          Object.fromEntries(
+            items.map((item) => [item.note.noteId, item.status]),
+          ),
+        );
       }
     });
   };

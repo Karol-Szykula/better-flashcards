@@ -22,6 +22,7 @@ import {
 import { AnkiConnectMock } from "../mocks/anki-connect";
 import { required } from "../helpers/required";
 import { jsonEngine } from "../helpers/json-engine";
+import { syncedCleanRecord } from "src/services/note-lifecycle";
 
 AnkiConnectMock.install();
 
@@ -401,6 +402,67 @@ describe("executeImport", () => {
       (request) => request.action === "retrieveMediaFile",
     );
     expect(requested).toHaveLength(0);
+  });
+
+  test("given a note the preview said was newer in Anki when the vault file changed since then then the report counts the change and the note is skipped", async () => {
+    // given
+    const { vault } = executeWith({
+      "Languages/What-is-2-2-201.md":
+        '```note-form\n{"front": "Yours", "back": "4", "id": 201}\n```\n',
+    });
+    const notes = [basicImportNote(201, 500)];
+
+    // when
+    const report = await executeImport(
+      new Anki(),
+      vault,
+      {
+        deckName: "Languages",
+        notes,
+        decisions: { 201: true },
+        fieldMappings: { Basic: basicMapping() },
+        targetFolder: "",
+        noteLifecycle: { 201: syncedCleanRecord(100, "hash-of-the-old-text") },
+        previewStatuses: { 201: "synced.ankiNewer" },
+        vaultNoteIndex: new Map([[201, "Languages/What-is-2-2-201.md"]]),
+      },
+      jsonEngine,
+    );
+
+    // then
+    expect(report.changedSincePreview).toBe(1);
+    expect(report.skippedNewerInVault).toBe(1);
+    expect(report.created).toBe(0);
+    expect(report.vanishedFromDeck).toBe(0);
+  });
+
+  test("given a selected note that the fresh read no longer returns when executed then it is counted as gone and nothing is written", async () => {
+    // given
+    const { vault } = executeWith({});
+    const notes = [basicImportNote(202, 500), basicImportNote(203, 500)];
+
+    // when
+    const report = await executeImport(
+      new Anki(),
+      vault,
+      {
+        freshNotes: [notes[1] as never],
+        deckName: "Languages",
+        notes,
+        decisions: { 202: true, 203: true },
+        fieldMappings: { Basic: basicMapping() },
+        targetFolder: "",
+        noteLifecycle: {},
+      },
+      jsonEngine,
+    );
+
+    // then
+    expect(report.vanishedFromDeck).toBe(1);
+    expect(report.created).toBe(1);
+    expect(
+      vault.getAbstractFileByPath("Languages/What-is-2-2-202.md"),
+    ).toBeNull();
   });
 
   test("given a missing deck folder when executed then creates the folder first", async () => {
