@@ -5,7 +5,9 @@ import type {
 
 export const OUT_OF_SCOPE = "OUT_OF_SCOPE";
 
-export type SyncCommand = "export" | "import" | "sync";
+export const SYNC_COMMANDS = ["export", "import", "sync"] as const;
+
+export type SyncCommand = (typeof SYNC_COMMANDS)[number];
 
 type SyncCommandOwner = SyncCommand | "purge" | "wizard";
 
@@ -257,7 +259,7 @@ const forceLabels: Record<SyncCommand, string> = {
 
 export function syncDecisionTableMarkdown(): string {
   const sections: string[] = [];
-  for (const command of ["import", "export", "sync"] as SyncCommand[]) {
+  for (const command of SYNC_COMMANDS) {
     const rows = Object.entries(decisions[command]).map(
       ([status, row]) =>
         `| \`${status}\` | \`${row.act}\` | \`${row.forcedAct ?? "-"}\` | \`${row.owner}\` | ${row.rationale} |`,

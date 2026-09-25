@@ -44,6 +44,22 @@ Sync has no force dimension: it is the one command that decides on its own.
 | `vaultOnly.ankiDeleted` | `OUT_OF_SCOPE` | `EXPORT` | `sync` | The note was deleted in Anki: Sync applies the deletion, Obsidian wins re-creates it on demand. |
 | `orphaned` | `OUT_OF_SCOPE` | `-` | `purge` | Nothing in Anki, nothing in the vault, only a stale record: Purge ledger forgets it, no command acts on the note. |
 
+## import (force: Anki wins)
+
+| state | default | forced | owner | why |
+| --- | --- | --- | --- | --- |
+| `ankiOnly.neverImported` | `IMPORT` | `-` | `import` | Only Anki has it and the vault never had it: write the file and enrol the note. |
+| `ankiOnly.fileDeleted` | `OUT_OF_SCOPE` | `RESURRECT` | `sync` | The file is gone and Sync owns the rule (resurrect iff Anki is newer); the wizard never resurrects on its own, and only Anki wins re-creates the file. |
+| `synced.clean` | `CHECK` | `-` | `sync` | Both sides match the record: the wizard writes nothing and says which file already carries the note. |
+| `synced.ankiNewer` | `PULL` | `-` | `sync` | Anki is newer: refresh the vault file with Anki's version. |
+| `synced.vaultNewer` | `OUT_OF_SCOPE` | `FORCE_PULL` | `sync` | Obsidian is newer: import never overwrites a newer edit - the user forces this one note or Sync decides. |
+| `synced.diverged` | `OUT_OF_SCOPE` | `FORCE_PULL` | `sync` | Edited in both places: import never resolves a conflict by clocks - the user forces it or Sync takes the newest. |
+| `linked.unenrolled` | `ENROLL` | `-` | `wizard` | The block carries an id that no record knows (fresh data.json or a hand-written id): enrol it against the Anki note, write nothing, then handle it as synced.*. |
+| `vaultOnly.unexported` | `OUT_OF_SCOPE` | `-` | `export` | Only the vault has it and Anki has never seen it: the export wizard creates it. |
+| `vaultOnly.unenrolled` | `ENROLL` | `-` | `wizard` | The block carries an id that no record knows (fresh data.json or a hand-written id): enrol it against the Anki note, write nothing, then handle it as synced.*. |
+| `vaultOnly.ankiDeleted` | `OUT_OF_SCOPE` | `-` | `sync` | The note is gone from Anki: Sync applies the deletion; Obsidian wins re-creates it in the export wizard. |
+| `orphaned` | `OUT_OF_SCOPE` | `-` | `purge` | Nothing in Anki, nothing in the vault, only a stale record: Purge ledger forgets it, no command acts on the note. |
+
 ## sync (force: no force)
 
 | state | default | forced | owner | why |

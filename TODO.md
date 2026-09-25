@@ -102,41 +102,40 @@ Phase 1c - decision table, guards and honest reports (local only, no behavior re
 The lifecycle machine answers "is this transition legal" but never answered "what does this command do with this note in this run" - that lived in three resolvers, ~17 guards across three services, and four places where a note was neither written nor counted. This phase turns the answer into one table, proves the table is complete, and closes the silent outcomes, starting with the document and the proof so that every later production change is already visible in it.
 
 - [x] UC-25h: the decision table as data, replacing the three resolver switches.
-  src/services/sync-decision.ts (services, not entities: the row type needs
-  NoteLifecycleStatus from note-lifecycle.ts, and moving that type out is its own
-  job) owns one row per (command, status): { act, forcedAct?, owner, rationale },
-  and OUT_OF_SCOPE is an explicit constant with a named owner, so an empty cell
-  is impossible - the resolvers returned `undefined` from a `default:` case,
-  which meant both "this command does not touch that" and "someone forgot a
-  case". Two accessors: syncDecisionFor returns the row (used by the doc and,
-  in UC-25k, by the preview badge) and decisionActFor applies the force rule in
-  one place, so the "forced only if the row has a forced act" precedence is not
-  duplicated at the call sites. The three resolvers are deleted, not wrapped:
-  import.ts, export.ts and sync.ts call decisionActFor and narrow with the
-  isInScope guard, and the forced counter in import.ts now reads "the force
-  overrode an out-of-scope default" off the row instead of re-calling the
-  resolver. The table prints to docs/sync-decision-table.md via
-  `pnpm run doc:sync-table` (src/dev/print-sync-decision-table.ts, added to
-  knip's entry because a dev script is an entry, not dead code) and the
-  anti-drift test pins the file. Behavior is unchanged: the 33 cases that used
-  to live in the three resolver describes moved verbatim into
-  tests/services/sync-decision.test.ts as three tables, and nothing else in the
-  suite moved - 432/432. Deviations worth naming: the rationale is per
-  (command, status) and not per forced variant, so UC-25k may need a per-forced
-  label for the states where the force is legal but changes nothing (today: an
-  up-to-date note rewrites identical content); the owner is the state owner, not
-  the acting command, which makes "out of scope => someone else owns it" a
-  property the data can be checked for; and Sync rows carry no forcedAct at
-  all, so the no-force-dimension rule is visible in the data instead of being
-  a convention. note-lifecycle.test.ts dropped 148 lines (519 -> 371) and is
-  still over the 300-line rule, which the remaining describes will fix when
-  UC-25i and UC-35 touch them
-- [ ] UC-25i: four property tests - totality (every command x status x force has
-  a row), confinement at both levels (import never PUSHes, and a full
-  executeImport issues no addNotes / updateNoteFields in the mock's request log),
-  reachability via @xstate/graph (every state x event pair is emitted or marked
-  unreachable), and the three resolver describes replaced by one test.each over
-  the table. Done-when: four tests, no any, no it.skip, every status accounted for
+  src/services/sync-decision.ts owns one row per (command, status): { act,
+  forcedAct?, owner, rationale }, with OUT_OF_SCOPE an explicit constant, so an
+  empty cell is impossible where three `default:` arms used to mean both "not this
+  command's note" and "someone forgot a case". syncDecisionFor returns the row
+  (doc, and the badge in UC-25k), decisionActFor owns the force precedence, and
+  the resolvers are deleted rather than wrapped. The table prints to
+  docs/sync-decision-table.md via `pnpm run doc:sync-table`, pinned by an
+  anti-drift test; the 33 resolver cases moved verbatim, so 432/432 with no
+  assertion touched. Deviations: services not entities (the row needs the
+  lifecycle types), the rationale is per (command, status) so UC-25k may need a
+  per-forced label, owner is the state owner rather than the acting command, and
+  Sync rows carry no forcedAct at all.
+- [x] UC-25i: four property tests, and they found three things. Totality: all 33
+  command x status rows resolve, every act is a lifecycle event or OUT_OF_SCOPE,
+  every row has an owner and a non-empty rationale, and all 66 acts are legal in
+  their state (transitionNoteLifecycle must not throw), so the table cannot
+  promise what the machine forbids. Confinement at two levels: the per-command
+  act sets, plus the AnkiConnect request log of a real run - a full executeImport
+  issues no addNotes / addNote / updateNoteFields / deleteNotes, a full
+  executeExport creates exactly one note and issues no deleteNotes, and the
+  neighbouring test asserts the import really wrote a file so the "no writes"
+  check cannot pass vacuously. Reachability: every (state, event) pair the
+  machine allows is emitted by a row or sits on an explicit list with a reason -
+  four do not, and adding a producer without deleting its entry fails the test.
+  The three resolver tables became one 33-row table, split across
+  sync-decision.test.ts (229), lifecycle-reachability.test.ts (75) and
+  command-confinement.test.ts (150) to stay under the 300-line rule. Findings:
+  the "out of scope => another command owns it" invariant is false for Sync's own
+  two cells (purge handles them outside the resolver), so the strong check runs
+  for the wizards and those cells are pinned to a rationale naming UC-30 / UC-31;
+  getSimplePaths does not report self-loops and saw only two of the four
+  unreachable pairs, so reachability reads the transition wrapper instead; and the
+  import confinement is a request-log promise, not structural, because
+  executeImport takes an Anki instance and may only read media with it.
 - [ ] UC-25j: three real bugs, each a named counter plus a literal-string test -
   media dropped by `if (!data) continue` (media.ts:62-65), a fence parse failure
   silent in export (export.ts:72-86), purgedRecords computed and never shown
