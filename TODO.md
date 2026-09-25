@@ -177,32 +177,35 @@ The lifecycle machine answers "is this transition legal" but never answered "wha
   setIcon nor setTooltip. Swapping in Lucide glyphs is one line once the mock
   grows setIcon.
 
-- [ ] UC-25l: honest reports on the Sync side (after UC-28, because UC-28 rewrites
-  exactly this code) - counts.refreshed is set to eligible.length BEFORE the
-  delegated import filters, so the report can claim a refresh that never happened
-  (sync.ts:216-221), and an untracked Anki note with no linked block vanishes with
-  no counter (sync.ts:121-126). Done-when: refreshed is what the import wrote,
-  the untracked note has a named reason, UC-28's report carries both
-- [ ] UC-25m: guards as data (after UC-28, because the scope guard is the
-  snapshots question) - Guard = { id, appliesTo, blocks, reason, mvp } with the
-  three command paths asking the table instead of carrying if statements, 17
-  guards today with the pack check running twice (sync.ts:130-133 and
-  import.ts:450-474). MODEL-12's prose becomes code: mvp "unsupported" means a
-  mandatory counter, never a silent skip, in the table and in the report.
-  Done-when: all 17 have a row, the duplicate check is gone, each row has a test
+- [ ] UC-25o: one classification snapshot for preview and execution - the preview
+  (NotesPreview.tsx:300) and the execution (import.ts:475) classify the same note
+  separately, so a stale index can make the badge promise "overwrites your file"
+  while the run does something else. Since UC-25k the badge IS the policy
+  sentence, so this is the last place where the label can still lie.
+  Done-when: the index and block hashes are read once and carried into the run,
+  and a test with a deliberately stale index asserts badge and run agree
+- [ ] Next: UC-28. Everything above is done except UC-25o, and the two items below
+  the marker are deliberately not before it: UC-28 rewrites the scope logic that
+  the guard table would encode, and the action inventory only becomes true when
+  UC-30 and UC-31 add their producers
+- [ ] UC-25m: guards as data - **skipped by decision, not an oversight.** The 17
+  runtime guards stay where they are (pack, model, media, ignored dirs,
+  selection, index freshness) and the pack check keeps running twice
+  (sync.ts:130 and import.ts:444). Skipped because it is the most expensive item
+  in the phase, it changes no behavior, and it is the one that goes stale
+  fastest - its centrepiece, the scope guard, is the snapshots logic UC-28
+  deletes. What it would have carried is already covered where it mattered: the
+  three silent outcomes of UC-25j and the two folded into UC-28. Revisit only if
+  UC-30/31 find themselves writing the same rule in three places; the shape is
+  written down here so it does not have to be reinvented - Guard = { id,
+  appliesTo, blocks, reason, mvp }, where mvp "unsupported" means a mandatory
+  counter, never a silent skip
 - [ ] UC-25n: every action that changes a note's state, as a second section of the
   generated doc (after UC-28 and UC-30/31, because DELETE_FILE and the tombstone
   rows arrive with them) - for each: the states it fires in, its producer, the UC
   that owns it. Three have no cell today: DELETE_FILE has no producer at all,
   purge and fill-id-by-hash bypass the resolver. Done-when: complete against the
   code under the same anti-drift test, every gap a named Phase 2 entry
-- [ ] UC-25o: one classification snapshot for preview and execution (after UC-25k,
-  because the label the user read is then literally the policy that runs) - the
-  preview (NotesPreview.tsx:273-293) and the execution (import.ts:477-501)
-  classify separately, so a stale index can make a badge promise "overwrites your
-  file" while the run does something else. Done-when: index and block hashes are
-  read once and carried into the run, and a stale-index test asserts badge and
-  run agree
 
 Not in this phase: the scan/recreate command and syncTieThresholdSec (both
 deferred), a placeholder for runtime values in a rationale (the up-to-date badge
@@ -220,7 +223,7 @@ Chores found after the current phase (not tied to a phase):
 Phase 2 - sync core (ledger-driven, deck mapping, deletions):
 - [x] UC-26: purge scope fix (data loss) - Sync asked only notesInfo for records not seen in the snapshot decks and removed their blocks + records, so notes exported to a deck without a snapshot were deleted from the vault. Purge now confirms absence with a batched notesInfo per candidate; foreign records stay untouched
 - [x] UC-27: synced.diverged newest-wins (mod vs mtime) (isAnkiNewer in note-push: anki mod * 1000 vs TFile.stat.mtime; Anki newer -> export reports it, Sync pulls; vault newer -> both push)
-- [ ] UC-28: ledger-driven Sync (scope = settings.noteLifecycle, no deckImportSnapshots guard; deckName added to the record; the observed status is persisted so block banners become reachable; notes added in Anki are counted as "needs import" instead of a silent skip; empty ledger = no-op with a helpful hint; aggregate report; new "Sync current note" command for the active file)
+- [ ] UC-28: ledger-driven Sync (scope = settings.noteLifecycle, no deckImportSnapshots guard; deckName added to the record; the observed status is persisted so block banners become reachable; notes added in Anki are counted as "needs import" instead of a silent skip; empty ledger = no-op with a helpful hint; aggregate report; new "Sync current note" command for the active file). Two report-honesty holes were folded in from the dropped UC-25l, because UC-28 rewrites exactly that code: counts.refreshed is set to eligible.length BEFORE the delegated import filters, so the report can claim a refresh that never happened (sync.ts:220), and an untracked Anki note with no linked block vanishes with no counter (sync.ts:122-126). Done-when: refreshed is the number of files the import actually wrote, the untracked note has a named reason, and the aggregate report carries both
 - [ ] UC-29: deck vault -> Anki (read the Anki deck via cardsInfo, enforce the vault path's deck with changeDeck for the cards in the ledger deck only per SYNC-09)
 - [ ] UC-30: tombstones + resurrect (vault delete event -> noteId -> deletedAt; resurrect iff Anki is newer than the deletion, otherwise respect the deletion; reverse index cleanup; both resurrection paths clear the tombstone: a Sync RESURRECT and a forced import, and Purge ledger forgets the record with it)
 - [ ] UC-31: deletions (Anki deletion wins per SYNC-03: strip the block, purge the record, clean tombstones)
